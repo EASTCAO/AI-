@@ -1436,6 +1436,92 @@
             white-space: pre-line;
         }
 
+        /* 进度条 */
+        .progress-bar-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            max-width: 90%;
+            background: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-xl);
+            padding: 20px 24px;
+            z-index: 10000;
+            display: none;
+            border: 2px solid var(--primary);
+        }
+
+        .progress-bar-container.active {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .progress-bar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .progress-bar-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .progress-bar-count {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .progress-bar-track {
+            width: 100%;
+            height: 8px;
+            background: var(--bg);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
         /* 响应式 */
         @media (max-width: 900px) {
             .main-layout {
@@ -1779,6 +1865,17 @@
             </div>
             <div class="loading-text">AI正在分析图片...</div>
             <div class="loading-subtext">正在欣赏摄影师的作品...</div>
+        </div>
+    </div>
+
+    <!-- 进度条 -->
+    <div class="progress-bar-container" id="progressBar">
+        <div class="progress-bar-header">
+            <div class="progress-bar-title" id="progressTitle">正在处理图片</div>
+            <div class="progress-bar-count" id="progressCount">0/0</div>
+        </div>
+        <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progressFill" style="width: 0%"></div>
         </div>
     </div>
 
@@ -2232,7 +2329,8 @@
 
             // 读取文件为base64（并压缩超大图片）
             selectedFilesData = [];
-            showToast(`开始处理 ${images.length} 张图片...`, '');
+            showProgressBar('正在处理图片');
+            updateProgress(0, images.length);
 
             let processedCount = 0;
             for (const file of images) {
@@ -2240,11 +2338,10 @@
                 selectedFilesData.push(processed);
 
                 processedCount++;
-                if (processedCount % 5 === 0 || processedCount === images.length) {
-                    showToast(`正在处理图片... ${processedCount}/${images.length}`, '');
-                }
+                updateProgress(processedCount, images.length);
             }
 
+            hideProgressBar();
             renderPreview();
             updateAnalyzeBtn();
 
@@ -2271,7 +2368,7 @@
             selectedFiles = [];
             selectedFilesData = [];
 
-            showToast(`开始处理 ${images.length} 张图片...`, '');
+            showProgressBar('正在处理图片');
 
             // 按文件夹分组
             const excludedFolders = []; // 记录被排除的备选文件夹
@@ -2374,6 +2471,9 @@
 
             // 处理每个文件夹的图片
             let processedCount = 0;
+            const totalFiles = selectedFiles.length;
+            updateProgress(0, totalFiles);
+
             for (const folderPath in folderGroups) {
                 const group = folderGroups[folderPath];
                 for (const file of group.files) {
@@ -2383,11 +2483,11 @@
                     selectedFilesData.push(processed);
 
                     processedCount++;
-                    if (processedCount % 5 === 0 || processedCount === selectedFiles.length) {
-                        showToast(`正在处理图片... ${processedCount}/${selectedFiles.length}`, '');
-                    }
+                    updateProgress(processedCount, selectedFiles.length);
                 }
             }
+
+            hideProgressBar();
 
             renderPreview();
             updateAnalyzeBtn();
@@ -3537,6 +3637,30 @@
             link.download = `AI评分汇总_${today}.csv`;
             link.click();
             showToast('导出成功！', 'success');
+        }
+
+        // 进度条控制
+        function showProgressBar(title = '正在处理图片') {
+            const progressBar = document.getElementById('progressBar');
+            const progressTitle = document.getElementById('progressTitle');
+            progressTitle.textContent = title;
+            progressBar.classList.add('active');
+        }
+
+        function hideProgressBar() {
+            const progressBar = document.getElementById('progressBar');
+            progressBar.classList.remove('active');
+            // 重置进度
+            updateProgress(0, 0);
+        }
+
+        function updateProgress(current, total) {
+            const progressCount = document.getElementById('progressCount');
+            const progressFill = document.getElementById('progressFill');
+
+            progressCount.textContent = `${current}/${total}`;
+            const percentage = total > 0 ? (current / total) * 100 : 0;
+            progressFill.style.width = percentage + '%';
         }
 
         // Toast
