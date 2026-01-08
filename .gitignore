@@ -1,0 +1,40 @@
+# 临时文件和截图
+*.png
+*.jpg
+*.jpeg
+*.gif
+image.*
+screenshot.*
+
+# 参考文件夹（包含大型文档）
+参考文件/
+*.xlsx
+*.docx
+*.xls
+*.doc
+*.pdf
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE和编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 临时文件
+*.tmp
+*.bak
+*.log
+
+# Node modules（如果将来需要）
+node_modules/
+package-lock.json
+
+# 用户数据和缓存
+.cache/
+*.cache

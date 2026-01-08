@@ -1,0 +1,3554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI产品拍摄智能评分系统 V1.0</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #5b7fff;
+            --primary-light: #7c97ff;
+            --primary-dark: #4461d7;
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success: #10b981;
+            --success-light: #34d399;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f5f7fa;
+            --bg-secondary: #e5e9f0;
+            --card: #ffffff;
+            --text: #1a202c;
+            --text-secondary: #4a5568;
+            --text-light: #718096;
+            --border: #e2e8f0;
+            --border-light: #edf2f7;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --radius-sm: 8px;
+            --radius: 12px;
+            --radius-lg: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(180deg, #f5f7fa 0%, #e8ecf3 100%);
+            min-height: 100vh;
+            color: var(--text);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 头部 */
+        .header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 28px 40px;
+            border-radius: var(--radius-lg);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+            pointer-events: none;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            letter-spacing: -0.02em;
+        }
+
+        .version-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 页面底部版本信息 */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-light);
+            font-size: 13px;
+            margin-top: 20px;
+        }
+
+        .footer .version-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            font-weight: 500;
+        }
+
+        .footer .version-number {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid rgba(255,255,255,0.15);
+            position: relative;
+        }
+
+        .api-status:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--danger);
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        .status-dot.connected {
+            background: var(--success-light);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.95); }
+        }
+
+        /* API设置卡片 */
+        .api-card {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border: 2px solid #fcd34d;
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow), 0 0 0 1px rgba(252, 211, 77, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .api-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .api-card h2 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #92400e;
+            position: relative;
+        }
+
+        .api-card p {
+            color: #78350f;
+            font-size: 13px;
+            margin-bottom: 14px;
+            line-height: 1.7;
+            position: relative;
+        }
+
+        .api-card a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+            border-bottom: 1px solid transparent;
+        }
+
+        .api-card a:hover {
+            border-bottom-color: var(--primary);
+        }
+
+        .api-form {
+            display: flex;
+            gap: 12px;
+            position: relative;
+        }
+
+        .api-form input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            transition: var(--transition);
+            background: white;
+            font-family: inherit;
+        }
+
+        .api-form input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(91, 127, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .api-form button {
+            padding: 12px 24px;
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+            box-shadow: var(--shadow);
+        }
+
+        .api-form button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .api-form button:active {
+            transform: translateY(0);
+        }
+
+        /* 主布局 */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            align-items: stretch;
+        }
+
+        .panel {
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .panel:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .panel-header {
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border-light);
+            font-weight: 600;
+            font-size: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to bottom, #fafbfc 0%, #ffffff 100%);
+            letter-spacing: -0.01em;
+            flex-shrink: 0;
+        }
+
+        .panel-body {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 400px;
+        }
+
+        /* 当header隐藏时，从顶部开始 */
+        .panel:has(.panel-header[style*="display: none"]) .panel-body,
+        .panel:has(.panel-header[style*="display:none"]) .panel-body {
+            padding-top: 24px;
+        }
+
+        /* 当有内容时，从顶部开始排列 */
+        .panel-body:has(.result-section.active),
+        .panel-body:has(#summaryBar[style*="display: flex"]),
+        .panel-body:has(.history-list:not(:empty)),
+        .panel-body:has(.upload-zone) {
+            justify-content: flex-start;
+        }
+
+        /* 上传区域 */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 40px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            background: linear-gradient(to bottom, #fafbfc 0%, #ffffff 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-zone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, rgba(91, 127, 255, 0.05) 0%, transparent 70%);
+            opacity: 0;
+            transition: var(--transition);
+            pointer-events: none;
+        }
+
+        .upload-zone:hover::before {
+            opacity: 1;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--primary);
+            background: linear-gradient(to bottom, #f8f9ff 0%, #ffffff 100%);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+        }
+
+        .upload-icon {
+            font-size: 56px;
+            margin-bottom: 16px;
+            opacity: 0.9;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .upload-zone:hover .upload-icon {
+            transform: scale(1.1) translateY(-4px);
+            opacity: 1;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            color: var(--text);
+            margin-bottom: 8px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .upload-hint {
+            font-size: 12px;
+            color: var(--text-light);
+            line-height: 1.7;
+            max-width: 500px;
+            margin: 0 auto 20px;
+        }
+
+        .upload-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
+        .upload-buttons .btn {
+            padding: 12px 24px;
+            font-size: 14px;
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 600;
+            box-shadow: var(--shadow);
+            position: relative;
+            z-index: 10;
+        }
+
+        .upload-buttons .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .upload-buttons .btn.secondary {
+            background: linear-gradient(135deg, #9333ea 0%, #c026d3 100%);
+        }
+
+        /* 图片预览 */
+        .preview-section {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .preview-section.active { display: block; }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .preview-count {
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        .preview-count strong {
+            font-size: 20px;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .btn-clear {
+            padding: 6px 14px;
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: var(--danger);
+            border: 1px solid #fecaca;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-clear:hover {
+            background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+            gap: 8px;
+            max-height: 240px;
+            overflow-y: auto;
+            padding: 4px;
+            border-radius: var(--radius-sm);
+        }
+
+        /* Scrollbar美化 */
+        .preview-grid::-webkit-scrollbar,
+        .folder-groups::-webkit-scrollbar,
+        .history-list::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .preview-grid::-webkit-scrollbar-track,
+        .folder-groups::-webkit-scrollbar-track,
+        .history-list::-webkit-scrollbar-track {
+            background: var(--bg);
+            border-radius: 10px;
+        }
+
+        .preview-grid::-webkit-scrollbar-thumb,
+        .folder-groups::-webkit-scrollbar-thumb,
+        .history-list::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+            transition: var(--transition);
+        }
+
+        .preview-grid::-webkit-scrollbar-thumb:hover,
+        .folder-groups::-webkit-scrollbar-thumb:hover,
+        .history-list::-webkit-scrollbar-thumb:hover {
+            background: var(--text-light);
+        }
+
+        /* 文件夹分组 */
+        .folder-groups {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 2px;
+        }
+
+        .folder-group {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            margin-bottom: 12px;
+            background: linear-gradient(to bottom, #fafbfc 0%, #ffffff 100%);
+            transition: var(--transition);
+        }
+
+        .folder-group:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .folder-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .folder-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .folder-count {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-left: 12px;
+            font-weight: 500;
+        }
+
+        .folder-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 6px;
+        }
+
+        .folder-preview.collapsed {
+            max-height: 130px;
+            overflow: hidden;
+        }
+
+        .btn-expand {
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: var(--transition);
+        }
+
+        .btn-expand:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .preview-item {
+            aspect-ratio: 1;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+            background: var(--bg);
+        }
+
+        .preview-item:hover {
+            border-color: var(--primary);
+            transform: scale(1.08);
+            box-shadow: var(--shadow);
+            z-index: 10;
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: var(--transition);
+        }
+
+        .preview-item img[data-src] {
+            background: linear-gradient(135deg, #f5f5f5 25%, #e0e0e0 50%, #f5f5f5 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .preview-item:hover img {
+            transform: scale(1.1);
+        }
+
+        /* 基本信息 */
+        .info-form {
+            margin-top: 20px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .form-group { flex: 1; }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 11px 14px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            transition: var(--transition);
+            background: white;
+            color: var(--text);
+            font-family: inherit;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(91, 127, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .form-group input:hover, .form-group select:hover {
+            border-color: var(--primary-light);
+        }
+
+        /* 分析按钮 */
+        .analyze-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: var(--transition);
+            box-shadow: var(--shadow-lg);
+            letter-spacing: -0.02em;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analyze-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+            pointer-events: none;
+        }
+
+        .analyze-btn:hover:not(:disabled)::before {
+            left: 100%;
+        }
+
+        .analyze-btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .analyze-btn:active:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .spinner {
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 结果区域 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 24px;
+            color: var(--text-light);
+            flex: 0 0 auto;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 16px;
+            opacity: 0.2;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .result-section {
+            display: none;
+            flex: 0 0 auto;
+        }
+        .result-section.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .score-display {
+            text-align: center;
+            padding: 32px;
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid #a7f3d0;
+        }
+
+        .score-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .score-value {
+            font-size: 64px;
+            font-weight: 800;
+            color: var(--success);
+            line-height: 1;
+            text-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+        }
+
+        .score-unit {
+            font-size: 22px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        /* 详情卡片 */
+        .detail-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .result-title-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .result-title-card:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow);
+        }
+
+        .result-title-card .title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.02em;
+        }
+
+        .result-title-card .score {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--success);
+            text-shadow: 0 2px 4px rgba(16, 185, 129, 0.15);
+            transition: var(--transition);
+        }
+
+        .result-title-card .score:hover {
+            color: var(--primary);
+            transform: scale(1.05);
+            text-shadow: 0 2px 8px rgba(91, 127, 255, 0.3);
+        }
+
+        .detail-card {
+            padding: 16px;
+            background: linear-gradient(to bottom, #fafbfc 0%, #ffffff 100%);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+        }
+
+        .detail-card:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-2px);
+        }
+
+        .detail-card .label {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-bottom: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .detail-card .value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .detail-full { grid-column: 1 / -1; }
+
+        .reasoning-box {
+            margin-top: 16px;
+            padding: 18px;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border: 2px solid #fcd34d;
+            border-radius: var(--radius);
+            border-left: 4px solid #f59e0b;
+            box-shadow: var(--shadow-sm);
+            flex-shrink: 0;
+        }
+
+        .reasoning-box h4 {
+            font-size: 13px;
+            color: #92400e;
+            margin-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .reasoning-box p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        /* 操作按钮 */
+        .result-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            letter-spacing: -0.01em;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+            color: var(--text);
+            border: 2px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(to bottom, #e9ecef 0%, #dee2e6 100%);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--success) 0%, var(--success-light) 100%);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* 历史记录 */
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-export {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, var(--success) 0%, var(--success-light) 100%);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .summary-bar {
+            display: flex;
+            gap: 12px;
+            padding: 20px;
+            background: linear-gradient(to bottom, #fafbfc 0%, #ffffff 100%);
+            border-bottom: 1px solid var(--border-light);
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .summary-item {
+            text-align: center;
+            padding: 4px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .summary-item .value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            text-shadow: 0 2px 4px rgba(91, 127, 255, 0.1);
+        }
+
+        .summary-item .label {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-top: 4px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .history-list {
+            max-height: 500px;
+            overflow-y: auto;
+            flex: 0 1 auto;
+        }
+
+        .history-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .history-item:hover {
+            background: linear-gradient(to right, #f8f9ff 0%, #ffffff 100%);
+            border-left: 3px solid var(--primary);
+            padding-left: 17px;
+        }
+
+        .history-info h4 {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: var(--text);
+            letter-spacing: -0.01em;
+        }
+
+        .history-info p {
+            font-size: 12px;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        .history-score {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            text-shadow: 0 2px 4px rgba(91, 127, 255, 0.1);
+        }
+
+        .history-actions { margin-left: 12px; }
+
+        .btn-delete {
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: var(--danger);
+            border: 1px solid #fecaca;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-delete:hover {
+            background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* 加载遮罩 */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .loading-overlay.active { display: flex; }
+
+        .loading-content {
+            background: white;
+            border-radius: var(--radius-lg);
+            padding: 40px 56px;
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--border-light);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 380px;
+        }
+
+        .loading-spinner {
+            width: 80px;
+            height: 100px;
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        /* 沙漏容器 */
+        .loading-spinner .hourglass {
+            width: 60px;
+            height: 80px;
+            position: relative;
+            margin: 0 auto;
+            animation: flip 3s ease-in-out infinite;
+        }
+
+        /* 沙漏外框 */
+        .loading-spinner .hourglass-frame {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            border: 3px solid #764ba2;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            overflow: hidden;
+        }
+
+        /* 上半部分沙漏 */
+        .loading-spinner .hourglass-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            clip-path: polygon(20% 0%, 80% 0%, 50% 100%);
+            background: linear-gradient(180deg, #ffd700 0%, #ffed4e 100%);
+            animation: sand-flow-top 3s ease-in-out infinite;
+        }
+
+        /* 下半部分沙漏 */
+        .loading-spinner .hourglass-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%;
+            clip-path: polygon(50% 0%, 20% 100%, 80% 100%);
+            background: linear-gradient(180deg, #ffed4e 0%, #ffd700 100%);
+            animation: sand-flow-bottom 3s ease-in-out infinite;
+        }
+
+        /* 中间的颈部 */
+        .loading-spinner .hourglass-neck {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background: #764ba2;
+            border-radius: 50%;
+            z-index: 2;
+        }
+
+        /* 流动的沙子 */
+        .loading-spinner .sand-stream {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 0;
+            background: linear-gradient(180deg, #ffd700, #ffed4e);
+            animation: sand-stream 3s ease-in-out infinite;
+            z-index: 1;
+        }
+
+        /* 沙漏翻转动画 */
+        @keyframes flip {
+            0%, 90% {
+                transform: rotate(0deg);
+            }
+            95%, 100% {
+                transform: rotate(180deg);
+            }
+        }
+
+        /* 上部沙子减少动画 */
+        @keyframes sand-flow-top {
+            0% {
+                clip-path: polygon(20% 0%, 80% 0%, 50% 100%);
+                opacity: 1;
+            }
+            85% {
+                clip-path: polygon(45% 45%, 55% 45%, 50% 100%);
+                opacity: 1;
+            }
+            90% {
+                clip-path: polygon(48% 48%, 52% 48%, 50% 100%);
+                opacity: 0.5;
+            }
+            95%, 100% {
+                clip-path: polygon(20% 0%, 80% 0%, 50% 100%);
+                opacity: 1;
+            }
+        }
+
+        /* 下部沙子增加动画 */
+        @keyframes sand-flow-bottom {
+            0% {
+                height: 0%;
+            }
+            85% {
+                height: 45%;
+            }
+            90% {
+                height: 48%;
+            }
+            95%, 100% {
+                height: 0%;
+            }
+        }
+
+        /* 沙子流动动画 */
+        @keyframes sand-stream {
+            0%, 5% {
+                height: 0;
+                opacity: 0;
+            }
+            10% {
+                height: 20px;
+                opacity: 1;
+            }
+            85% {
+                height: 20px;
+                opacity: 1;
+            }
+            90%, 100% {
+                height: 0;
+                opacity: 0;
+            }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 16px;
+            color: var(--text);
+            margin-bottom: 10px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .loading-subtext {
+            font-size: 14px;
+            background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #4facfe, #00f2fe, #667eea);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 600;
+            animation: gradientFlow 3s linear infinite, pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes gradientFlow {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.02); }
+        }
+
+        /* 打分参考表 */
+        .reference-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+        }
+
+        .reference-card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .reference-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            padding: 6px 0;
+        }
+
+        .reference-header:hover {
+            opacity: 0.8;
+        }
+
+        .reference-header h2 {
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text);
+            letter-spacing: -0.01em;
+        }
+
+        .toggle-icon {
+            font-size: 20px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--text-light);
+        }
+
+        .toggle-icon.collapsed { transform: rotate(-90deg); }
+
+        .reference-content {
+            margin-top: 16px;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .reference-content.active { display: block; }
+
+        .reference-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+
+        .reference-table th {
+            background: linear-gradient(to bottom, #fafbfc 0%, #f3f4f6 100%);
+            padding: 12px;
+            text-align: left;
+            font-weight: 700;
+            border-bottom: 2px solid var(--border);
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .reference-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-light);
+            line-height: 1.6;
+            font-size: 13px;
+        }
+
+        .reference-table tr {
+            transition: var(--transition);
+        }
+
+        .reference-table tr:hover {
+            background: linear-gradient(to right, #f8f9ff 0%, #ffffff 100%);
+        }
+
+        .score-range {
+            font-weight: 800;
+            color: var(--primary);
+            white-space: nowrap;
+            font-size: 14px;
+        }
+
+        .reference-tips {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-left: 4px solid var(--success);
+            padding: 14px 18px;
+            margin-top: 14px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            line-height: 1.7;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .reference-tips strong {
+            color: var(--success);
+            font-weight: 700;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120px);
+            background: var(--text);
+            color: white;
+            padding: 16px 24px;
+            border-radius: var(--radius);
+            z-index: 9999;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: var(--shadow-xl);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, var(--success) 0%, var(--success-light) 100%);
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, var(--danger) 0%, #f87171 100%);
+        }
+
+        .toast.warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+            color: #78350f;
+            white-space: pre-line;
+        }
+
+        /* 响应式 */
+        @media (max-width: 900px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .detail-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 16px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+                padding: 24px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .upload-zone {
+                padding: 32px 16px;
+            }
+
+            .upload-icon {
+                font-size: 48px;
+            }
+
+            .form-row {
+                flex-direction: column;
+            }
+
+            .result-actions {
+                flex-direction: column;
+            }
+
+            .summary-bar {
+                flex-direction: column;
+                gap: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>
+                🤖 AI产品拍摄智能评分系统
+                <span class="version-badge">V1.0</span>
+            </h1>
+            <div class="api-status" onclick="resetApiKey()" title="点击重新设置API Key">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">请设置API Key</span>
+            </div>
+        </header>
+
+        <!-- API设置 -->
+        <section class="api-card" id="apiCard">
+            <h2>🔑 设置通义千问 API Key</h2>
+            <p>
+                新用户赠送 <strong>100万tokens免费额度</strong>（约5000次调用）·
+                <a href="https://bailian.console.aliyun.com/#/api-key" target="_blank">点击获取免费 API Key →</a> ·
+                国内访问快速稳定，无需科学上网
+            </p>
+            <div class="api-form">
+                <input type="password" id="apiKeyInput" placeholder="粘贴您的通义千问 API Key (格式: sk-xxxxxx...)" value="">
+                <button onclick="setApiKey()">验证并保存</button>
+            </div>
+        </section>
+
+        <!-- 打分参考速查表 -->
+        <section class="reference-card">
+            <div class="reference-header" onclick="toggleReference()">
+                <h2>📋 打分参考速查表</h2>
+                <span class="toggle-icon collapsed" id="toggleIcon">▼</span>
+            </div>
+            <div class="reference-content" id="referenceContent">
+                <table class="reference-table">
+                    <thead>
+                        <tr>
+                            <th style="width:15%">分值区间</th>
+                            <th style="width:15%">参考时长</th>
+                            <th>典型特征</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="score-range">0.1-0.2分</td>
+                            <td>5-10分钟</td>
+                            <td>特别简单的产品，图片极少</td>
+                        </tr>
+                        <tr>
+                            <td class="score-range">0.25-0.4分</td>
+                            <td>10-25分钟</td>
+                            <td>难度低，图片需求少，含0-1张场景图</td>
+                        </tr>
+                        <tr>
+                            <td class="score-range">0.45-0.7分</td>
+                            <td>25-40分钟</td>
+                            <td>正常难度，图片偏少</td>
+                        </tr>
+                        <tr>
+                            <td class="score-range">0.75-0.95分</td>
+                            <td>40-55分钟</td>
+                            <td>比常规1分简单，张数偏少；或有一定难度但耗时比常规偏少</td>
+                        </tr>
+                        <tr style="background:#fffde7">
+                            <td class="score-range">1分（标准）</td>
+                            <td>约1小时</td>
+                            <td><strong>15-20张图，含1-2张场景图，正常拍摄难度</strong></td>
+                        </tr>
+                        <tr>
+                            <td class="score-range">1.05-1.2分</td>
+                            <td>1-1.3小时</td>
+                            <td>稍复杂于常规1分</td>
+                        </tr>
+                        <tr>
+                            <td class="score-range">1.25-1.45分</td>
+                            <td>1.3-1.5小时</td>
+                            <td>图片张数偏多，金属面大拍摄难度高；或大件需组装</td>
+                        </tr>
+                        <tr>
+                            <td class="score-range">1.5-1.7分</td>
+                            <td>1.5-1.8小时</td>
+                            <td>需准备道具，P图素材多，需求复杂；或大礼包产品</td>
+                        </tr>
+                        <tr>
+                            <td class="score-range">1.75-1.95分</td>
+                            <td>1.8-2小时</td>
+                            <td>更复杂的产品</td>
+                        </tr>
+                        <tr>
+                            <td class="score-range">2-2.4分</td>
+                            <td>2-2.3小时</td>
+                            <td>组合产品，图片需求多，拆装耗时；或含多张精美场景图</td>
+                        </tr>
+                        <tr>
+                            <td class="score-range">2.5-3分</td>
+                            <td>2.5-3小时</td>
+                            <td>大礼包+手工制作+特殊效果</td>
+                        </tr>
+                        <tr>
+                            <td class="score-range">3分以上</td>
+                            <td>3小时以上</td>
+                            <td>极少数特别复杂产品（需严格把控）</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="reference-tips">
+                    <strong>💡 打分要点：</strong><br>
+                    1. <strong>图片折算</strong>：同角度3-6张=1张；场景图1张=3张白底图<br>
+                    2. <strong>加分因素</strong>：金属面大、需造型、发光产品、特殊材质、需手工制作<br>
+                    3. <strong>批量折扣</strong>：颜色变体5-8折；批量变体3-8折（根据难度调整）<br>
+                    4. <strong>分值灵活</strong>：可以是任意合理小数（如0.35、0.55、0.85、1.15等）
+                </div>
+            </div>
+        </section>
+
+        <main class="main-layout">
+            <!-- 左侧：上传 -->
+            <div class="panel">
+                <div class="panel-header">📁 上传图片</div>
+                <div class="panel-body">
+                    <div class="upload-zone" id="uploadZone">
+                        <div class="upload-icon">📷</div>
+                        <div class="upload-text">选择图片或文件夹开始评分</div>
+                        <div class="upload-hint">
+                            支持批量导入 · 自动压缩大图 · 备选文件夹自动跳过
+                        </div>
+                        <div class="upload-buttons">
+                            <button class="btn" onclick="document.getElementById('fileInput').click()">选择图片</button>
+                            <button class="btn secondary" onclick="document.getElementById('folderInput').click()">选择文件夹</button>
+                        </div>
+                    </div>
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display:none" onchange="handleFiles(this.files)">
+                    <input type="file" id="folderInput" webkitdirectory multiple style="display:none" onchange="handleFolders(this.files)">
+
+                    <!-- 预览 -->
+                    <div class="preview-section" id="previewSection">
+                        <div class="preview-header">
+                            <div class="preview-count">
+                                已选择 <strong id="folderCount">0</strong> 个文件夹，
+                                共 <strong id="imageCount">0</strong> 张图片
+                            </div>
+                            <button class="btn-clear" onclick="clearImages()">清空</button>
+                        </div>
+                        <div class="folder-groups" id="folderGroups"></div>
+                        <div class="preview-grid" id="previewGrid"></div>
+                    </div>
+
+                    <!-- 基本信息 -->
+                    <div class="info-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>摄影师</label>
+                                <input type="text" id="photographer" placeholder="输入摄影师姓名">
+                            </div>
+                            <div class="form-group">
+                                <label>批量情况</label>
+                                <select id="variantType" onchange="updateVariantOptions()">
+                                    <option value="single">单款产品（无折扣）</option>
+                                    <option value="normal">普通变体（无折扣）</option>
+                                    <option value="color">颜色变体（5-8折）</option>
+                                    <option value="batch">批量变体（3-8折）</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row" id="discountRow" style="display:none;">
+                            <div class="form-group">
+                                <label>折扣率 <span style="color:#f57c00;font-size:12px;" id="discountHint"></span></label>
+                                <select id="discountRate">
+                                    <option value="1.0">无折扣（100%）</option>
+                                    <option value="0.8">8折（80%）</option>
+                                    <option value="0.7">7折（70%）</option>
+                                    <option value="0.6">6折（60%）</option>
+                                    <option value="0.5">5折（50%）</option>
+                                    <option value="0.4">4折（40%）</option>
+                                    <option value="0.3">3折（30%）</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>折扣说明（可选）</label>
+                                <input type="text" id="discountReason" placeholder="如：同角度、通用文档">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 隐藏字段用于兼容性 -->
+                    <input type="hidden" id="taskName" value="">
+                    <input type="hidden" id="variantCount" value="1">
+
+                    <button class="analyze-btn" id="analyzeBtn" onclick="analyzeImages()" disabled>
+                        <span>🔍 开始AI自动评分</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 右侧：结果 -->
+            <div class="panel">
+                <div class="panel-header history-header" style="display:none;">
+                    <span>📊 评分结果</span>
+                    <button class="btn-export" onclick="exportData()">导出记录</button>
+                </div>
+
+                <div class="panel-body">
+                    <!-- 空状态 -->
+                    <div class="empty-state" id="emptyState">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p>上传图片后，AI将自动分析并评分</p>
+                    </div>
+
+                    <!-- 结果 -->
+                    <div class="result-section" id="resultSection">
+                        <!-- 评分结果卡片 -->
+                        <div class="result-title-card">
+                            <div class="title">
+                                <span id="resultTaskName">SKU</span>
+                            </div>
+                            <div class="score" id="scoreValue2" onclick="editScore()" style="cursor:pointer;" title="点击修改分数">
+                                0.00分
+                            </div>
+                        </div>
+
+                        <!-- AI分析方框 -->
+                        <div class="reasoning-box">
+                            <h4>AI分析</h4>
+                            <p id="reasoningText">-</p>
+                            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.1);">
+                                <small style="color: #92400e;">💡 提示：如需调整分数，请点击上方分数进行修改</small>
+                            </div>
+                        </div>
+
+                        <!-- 批量评分汇总 -->
+                        <div id="batchSummary" style="display:none;"></div>
+
+                        <!-- 操作按钮 -->
+                        <div class="result-actions">
+                            <button class="btn btn-secondary" onclick="resetAll()">重新评分</button>
+                            <button class="btn btn-primary" onclick="saveResult()">保存结果</button>
+                        </div>
+                    </div>
+
+                    <!-- 今日统计 -->
+                    <div class="summary-bar" id="summaryBar" style="display:none; margin-top:20px; border-radius:8px;">
+                        <div style="display:flex; gap:32px; flex:1;">
+                            <div class="summary-item">
+                                <div class="value" id="summaryCount">0</div>
+                                <div class="label">今日任务</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="value" id="summaryTotal">0</div>
+                                <div class="label">总积分</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="value" id="summaryAvg">0</div>
+                                <div class="label">平均分</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn-export" onclick="exportData()">导出记录</button>
+                            <button class="btn-delete" onclick="clearAllRecords()" style="padding:10px 16px;">清空全部</button>
+                        </div>
+                    </div>
+
+                    <!-- 历史 -->
+                    <div class="history-list" id="historyList" style="margin-top:16px;"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 页面底部 -->
+        <footer class="footer">
+            <div class="version-info">
+                <span>当前版本：</span>
+                <span class="version-number">V1.0</span>
+                <span>·</span>
+                <span>更新日期：2026-01-08</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 加载 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner">
+                <div class="hourglass">
+                    <div class="hourglass-frame">
+                        <div class="hourglass-top"></div>
+                        <div class="hourglass-bottom"></div>
+                        <div class="hourglass-neck"></div>
+                        <div class="sand-stream"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="loading-text">AI正在分析图片...</div>
+            <div class="loading-subtext">正在欣赏摄影师的作品...</div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let selectedFiles = [];
+        let selectedFilesData = []; // 存储base64数据
+        let folderGroups = {}; // 按文件夹分组 { folderPath: { files: [], filesData: [] } }
+        let isFolderMode = false; // 是否为文件夹模式
+        let currentResult = null;
+        let records = [];
+        let geminiApiKey = null;
+
+        // 评分规则提示词
+        const SCORING_PROMPT = `你是一个专业的产品摄影评分专家。请从**图片数量、产品难易程度**两个维度综合分析并给出评分。
+
+## 核心评分标准
+
+**基准分：0.85分** = 标准一套图（15-20张有效图，正常难度）
+
+**最终评分** = 0.85分（基准）+ 数量调整 + 难度调整
+
+## 评分维度
+
+### 维度1：图片数量调整（基于15-20张标准）
+- **标准图片数**：15-20张有效图 = 0分调整
+- **计算公式**：(有效图片数 - 17.5) / 30 = 数量调整分
+  - 17.5张 = 标准中值
+  - 每多30张 = +1分
+  - 每少30张 = -1分
+
+**示例**：
+- 10张有效图：(10-17.5)/30 = -0.25分
+- 17张有效图：(17-17.5)/30 = 0分
+- 25张有效图：(25-17.5)/30 = +0.25分
+- 35张有效图：(35-17.5)/30 = +0.58分
+- 48张有效图：(48-17.5)/30 = +1分
+
+**重要原则**：严格统计有效工作量，必须严格折算重复细节，宁可多折不可少折
+
+**图片有效性判断（非常重要！）**：
+
+**❌ 完全排除的图片**（不计入有效数，不计入原始数）：
+1. **备选图片**：
+   - 文件名含"备选"、"backup"、"alt"、"替换"、"备用"等关键词
+   - 同角度拍摄多张（如拍3张选1张），仅最终选用的1张算有效，其他备选完全不算
+   - **强调**：备选图完全不计入原始图片数和有效图片数
+2. **备选文件夹**：
+   - 文件夹名称包含"备选"、"backup"等关键词的整个文件夹都不分析
+   - 这些文件夹在批量评分时会被自动跳过
+
+**需要折算的图片**（必须严格执行，宁可多折不可少折）：
+1. **同产品多角度细节**（手柄、盖子、底部、特写等）：
+   - **小图集折算规则**（总图片数≤10张）：
+     - 即使是不同角度，如果超过4张细节特写，也要严格折算：5-6张细节 → 折为2-3张（减少3张）
+     - 同角度细节：3张 → 折为1张（减少2张）
+   - **中等图集折算规则**（总图片数11-15张）：
+     - 这是最常见的标准配置，必须非常严格折算
+     - 有5张以上细节图的，至少折算3-4张（如13张含6张细节 → 9-10张有效）
+     - 即使是不同角度，如果细节图超过40%，也要严格按比例折算
+     - **原则**：11-15张的图集，有效图应保持在8-11张之间
+   - **大图集折算规则**（总图片数>15张）：
+     - 20张图中有12张细节 → 折算为5张，减少7张
+     - 15张细节 → 折算为6张，减少9张
+     - 10张细节 → 折算为4张，减少6张
+     - 8张细节 → 折算为3张，减少5张
+   - **判断标准**：只要细节图超过总数的30%，就必须严格折算（宁可多折不可少折）
+2. **同角度微调拍摄**（仅曝光/对焦调整）：3-4张 = 1张有效图
+3. **标准六面体产品**（规整拍6面）：6张 = 1-1.5张有效工作量（更严格）
+4. **同款式多颜色/图案**（如黑色3张、白色3张）：
+   - 如果拍摄角度完全相同，第一个颜色按100%计算，其他颜色按30-40%折算
+   - 例如：黑色3张 + 白色3张同角度 = 黑色3张 + 白色1张 = 4张有效图
+
+**不折算的图片**：
+1. 不同款式/颜色/图案的产品：每款都算独立工作
+2. 不同主要角度：正面、侧面、俯视等主要角度
+3. 场景图：每张都算独立工作
+
+### 维度2：产品难度调整
+
+**简单产品（-0.2到-0.15分）**：
+- 小件单一产品
+- 普通塑料、纸质产品
+- 规则形状，易摆放
+- 无特殊材质要求
+
+**正常难度（0分，不调整）**：
+- 15-20张图
+- 含0-2张场景图（**重要**：1-2张场景图是正常配置，不加分）
+- 普通金属、布料产品
+- **塑料型材、管材、棍牌架等常规产品**
+- 常规拍摄难度
+
+**有一定难度（+0.1到+0.15分）**：
+- 金属面积大且反光难控制
+- 需要造型搭配
+- 发光产品需要特殊布光
+- 带钻石/亮片/特殊装饰的产品
+- 带复杂图案/印花/刺绣的产品
+- 含3-4张精美场景图
+
+**较难产品（+0.15到+0.25分）**：
+- 镭射、炫彩等特殊反光材质且拍摄极其精细
+- 需要手工制作过程展示
+- 需要复杂组装的大件产品
+- 需要准备大量道具和场景
+- P图素材多，后期需求极其复杂
+- 大礼包产品（多件组合且需要拆装）
+- 含5张以上精美场景图
+
+**⚠️ 特别注意（这些绝对不加分）**：
+- ❌ 普通金属产品（锅、杯子、工具）→ 0分
+- ❌ 大件产品（不需组装）→ 0分
+- ❌ 常规组合拆装 → 0分
+- ❌ 塑料型材、管材、配件 → 0分
+- ❌ 多角度细节拍摄（这是常规操作）→ 0分
+
+## 评分计算流程
+
+**第1步：统计图片**
+1. 统计所有图片（包括备选）
+2. **识别并完全排除备选图片**（文件名含"备选"等关键词）
+3. 排除备选后得到原始工作图片数
+
+**第2步：计算有效图片数**（必须非常严格执行折算，宁可多折不可少折）
+1. 从原始工作图片中识别需要折算的图片（同角度细节、微调等）
+2. **严格计算折算减少的数量**（宁可多折算，不可少折算）
+3. **有效图片数** = 原始工作图片数 - 折算减少数
+
+**第3步：计算数量调整分**
+- **公式**：(有效图片数 - 17.5) / 30 = 数量调整分
+
+**第4步：计算难度调整分**
+- 根据产品难易程度：-0.2到+0.25分
+- **大部分产品应该是-0.15到0分**
+
+**最终评分** = 0.85分（基准）+ 数量调整 + 难度调整
+
+## 典型案例（严格参考）
+
+### 案例1：简单小件
+- **原始**：8张不同角度
+- **备选**：0张
+- **折算**：如有3张以上细节，严格折为5-6张（减少2-3张）
+- **有效**：6张
+- **数量调整**：(6-17.5)/30 = -0.38分
+- **难度**：简单产品 -0.15
+- **评分**：0.85 - 0.38 - 0.15 = **0.32分**
+
+### 案例2：标准任务
+- **原始**：17张不同角度 + 1张场景图
+- **备选**：0张
+- **折算**：18张中如有5张细节，严格折为15-16张（减少2-3张）
+- **有效**：15张
+- **数量调整**：(15-17.5)/30 = -0.08分
+- **难度**：1张场景图（正常配置）+0
+- **评分**：0.85 - 0.08 + 0 = **0.77分**
+
+### 案例3：带钻笔记本
+- **原始**：13张（不同角度、细节、包装等）
+- **备选**：0张
+- **折算**：13张中等图集，必须严格折算3-4张
+- **有效**：10张
+- **数量调整**：(10-17.5)/30 = -0.25分
+- **难度**：带钻装饰（有一定难度）+0.15
+- **评分**：0.85 - 0.25 + 0.15 = **0.75分**
+
+### 案例4：普通金属锅
+- **原始**：15张（含5张同产品细节特写）
+- **备选**：0张
+- **折算**：5张细节严格折为2张，减少3张
+- **有效**：12张
+- **数量调整**：(12-17.5)/30 = -0.18分
+- **难度**：普通金属 +0
+- **评分**：0.85 - 0.18 + 0 = **0.67分**
+
+### 案例5：塑料杯子（大量图片）
+- **原始**：47张（含大量同角度重复拍摄）
+- **备选**：0张
+- **折算**：严格折算重复细节，约减少18张
+- **有效**：29张
+- **数量调整**：(29-17.5)/30 = +0.38分
+- **难度**：简单塑料产品 -0.15
+- **评分**：0.85 + 0.38 - 0.15 = **1.08分**
+
+### 案例6：发光产品
+- **原始**：10张（小图集）
+- **备选**：0张
+- **折算**：如有4张细节严格折为8张（减少2张）
+- **有效**：8张
+- **数量调整**：(8-17.5)/30 = -0.32分
+- **难度**：发光产品（有一定难度）+0.15
+- **评分**：0.85 - 0.32 + 0.15 = **0.68分**
+
+### 案例7：多款式产品
+- **原始**：20张不同款式 + 2张场景图
+- **备选**：0张
+- **折算**：即使不同款式，如有重复细节也要严格折算4-5张
+- **有效**：17张
+- **数量调整**：(17-17.5)/30 = -0.02，约0
+- **难度**：正常难度 +0
+- **评分**：0.85 + 0 + 0 = **0.85分**
+
+### 案例8：复杂大礼包
+- **原始**：35张（多件组合）+ 3张精美场景图
+- **备选**：0张
+- **折算**：严格折算重复细节，减少7-9张
+- **有效**：29张
+- **数量调整**：(29-17.5)/30 = +0.38分
+- **难度**：较难（大礼包+精美场景）+0.25
+- **评分**：0.85 + 0.38 + 0.25 = **1.48分**
+
+## 关键提醒
+1. **基准分是0.85分**：标准一套图（15-20张有效图）= 0.85分基准
+2. **备选图完全不算**：文件名含"备选"或同角度多拍的未选用图，完全不计入任何统计
+3. **区分三种图集规模，折算规则极其严格（宁可多折不可少折）**：
+   - **小图集（≤10张）**：如有4张以上细节必须严格折算
+   - **中等图集（11-15张）**：最常见配置，必须严格折算3-4张
+   - **大图集（>15张）**：严格折算重复细节，比例更高
+4. **中等图集（11-15张）特别注意**：这是标准配置，必须非常严格折算
+   - 11张必须折2-3张 → 8-9张有效
+   - 13张必须折3-4张 → 9-10张有效
+   - 15张必须折4-5张 → 10-11张有效
+5. **同颜色同角度必须严格折算**：多个颜色拍摄相同角度时，第一个颜色100%，其他颜色30-40%
+6. **数量调整公式**：(有效图片数 - 17.5) / 30 = 数量调整分
+7. **1-2张场景图不加分**：1-2张场景图是正常配置，只有3张以上精美场景图才加分
+8. **带装饰产品适度加分**：带钻石、亮片、复杂图案的产品，加+0.1-0.15分
+9. **大件不自动加分**：仅当需要复杂组装时才加分
+10. **金属不自动加分**：普通金属产品是常规工作
+11. **大部分简单产品应该在0.3-0.7分**：只有真正复杂的产品才接近或超过0.85分
+12. **评分范围参考**（重要！）：
+    - 0.25-0.40分：简单产品、图片很少（<8张）
+    - 0.40-0.65分：简单产品、图片较少（8-12张）
+    - 0.65-1.0分：正常产品、标准图片数（13-20张）
+    - 1.0-1.5分：复杂产品、图片多（>20张）
+
+请分析图片后，只返回纯JSON格式：
+{
+    "dimension1_quantity": {
+        "totalImages": 原始图片总数,
+        "backupImages": 备选图片数量（已完全排除），
+        "foldedImages": 折算图片数量（如5张细节折为2张，减少了3张）,
+        "effectiveImages": 有效图片数（排除备选并折算后）,
+        "quantityAdjustment": 基于数量的调整分数（公式：(有效图-17.5)/30）,
+        "imageBreakdown": "图片构成说明（多少张主图、多少张细节图、多少张场景图等）"
+    },
+    "dimension2_difficulty": {
+        "level": "难度等级（简单/正常/有一定难度/较难）",
+        "productType": "产品类型",
+        "difficultyFactors": ["难度因素列表"],
+        "difficultyAdjustment": 难度调整分数（-0.2到+0.25）,
+        "difficultyDescription": "难度评估说明"
+    },
+    "finalScore": {
+        "baseScore": 0.85,
+        "suggestedScore": 最终建议积分（精确到0.05分）,
+        "calculation": "计算过程（如：0.85分（基准）+ 数量调整-0.25 + 难度-0.15 = 0.45分）",
+        "breakdown": "分数构成（0.85分基准 + 数量X + 难度X = 最终X分）"
+    },
+    "sceneImages": 场景图数量,
+    "sceneQuality": "场景图质量(无/简单/常规/精细)",
+    "qualityScore": 图片质量(0-100),
+    "reasoning": "综合评分理由（从图片数量、难度两个维度总结，强调：1.是否排除备选图 2.如何严格折算细节图 3.为什么给出这个难度分数 4.最终为什么是这个分数）"
+}`;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadApiKey();
+            loadRecords();
+            setupDragDrop();
+            setupHorizontalScroll();
+        });
+
+        // 从localStorage加载API Key
+        function loadApiKey() {
+            const saved = localStorage.getItem('qwen_api_key');
+            if (saved) {
+                geminiApiKey = saved;
+                setApiStatus(true);
+                // 显示已加载的API Key的前后几位
+                const masked = saved.substring(0, 8) + '...' + saved.substring(saved.length - 4);
+                console.log('已加载保存的API Key:', masked);
+            }
+        }
+
+        // 设置API Key
+        async function setApiKey() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey) {
+                showToast('请输入API Key', 'error');
+                return;
+            }
+
+            showToast('正在验证API Key...');
+
+            try {
+                // 验证API Key - 发送测试请求（OpenAI兼容格式）
+                const testResponse = await fetch(
+                    'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: 'qwen-turbo',
+                            messages: [
+                                {
+                                    role: 'user',
+                                    content: 'Hi'
+                                }
+                            ]
+                        })
+                    }
+                );
+
+                if (!testResponse.ok) {
+                    const error = await testResponse.json();
+                    console.error('API验证失败:', error);
+                    let errorMsg = error.message || error.error?.message || '验证失败';
+                    if (error.code) {
+                        errorMsg = `[${error.code}] ${errorMsg}`;
+                    }
+                    showToast('API Key无效: ' + errorMsg, 'error');
+                    return;
+                }
+
+                geminiApiKey = apiKey;
+                localStorage.setItem('qwen_api_key', apiKey);
+                setApiStatus(true);
+                showToast('API Key验证成功！', 'success');
+            } catch (error) {
+                console.error('API验证异常:', error);
+                let errorMsg = error.message;
+                if (error.name === 'TypeError' && errorMsg.includes('fetch')) {
+                    errorMsg = '网络错误：无法连接到通义千问API，请检查网络连接';
+                }
+                showToast('验证失败: ' + errorMsg, 'error');
+            }
+        }
+
+        function setApiStatus(connected) {
+            document.getElementById('statusDot').classList.toggle('connected', connected);
+            document.getElementById('statusText').textContent = connected ? '✅ 已就绪' : '请设置API Key';
+            document.getElementById('apiCard').style.display = connected ? 'none' : 'block';
+            updateAnalyzeBtn();
+        }
+
+        // 重新设置API Key
+        function resetApiKey() {
+            if (geminiApiKey) {
+                // 如果已有API Key，询问确认
+                if (!confirm('确定要重新设置API Key吗？\n当前的API Key将被清除。')) {
+                    return;
+                }
+            }
+
+            // 清除保存的API Key
+            localStorage.removeItem('qwen_api_key');
+            geminiApiKey = null;
+
+            // 显示API设置卡片
+            setApiStatus(false);
+
+            // 清空输入框
+            document.getElementById('apiKeyInput').value = '';
+
+            // 滚动到API设置区域
+            document.getElementById('apiCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            showToast('请输入新的API Key', '');
+        }
+
+        // 切换参考表
+        function toggleReference() {
+            const content = document.getElementById('referenceContent');
+            const icon = document.getElementById('toggleIcon');
+            const isActive = content.classList.contains('active');
+
+            content.classList.toggle('active');
+            icon.classList.toggle('collapsed', !isActive);
+        }
+
+        // 拖拽上传
+        function setupDragDrop() {
+            const zone = document.getElementById('uploadZone');
+            zone.addEventListener('dragover', e => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+            zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+            zone.addEventListener('drop', e => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+        }
+
+        // 设置横向滚动功能（鼠标滚轮控制）
+        function setupHorizontalScroll() {
+            const historyList = document.getElementById('historyList');
+            const folderGroups = document.getElementById('folderGroups');
+            const previewGrid = document.getElementById('previewGrid');
+
+            // 为历史记录列表添加智能滚动：
+            // - 默认垂直滚动（保持原有行为）
+            // - 按住Shift键时横向滚动
+            if (historyList) {
+                historyList.addEventListener('wheel', (e) => {
+                    if (e.shiftKey && e.deltaY !== 0) {
+                        e.preventDefault();
+                        historyList.scrollLeft += e.deltaY;
+                    }
+                });
+            }
+
+            // 为文件夹分组添加横向滚动（Shift+滚轮）
+            if (folderGroups) {
+                folderGroups.addEventListener('wheel', (e) => {
+                    if (e.shiftKey && e.deltaY !== 0) {
+                        e.preventDefault();
+                        folderGroups.scrollLeft += e.deltaY;
+                    }
+                });
+            }
+
+            // 为预览网格添加横向滚动（Shift+滚轮）
+            if (previewGrid) {
+                previewGrid.addEventListener('wheel', (e) => {
+                    if (e.shiftKey && e.deltaY !== 0) {
+                        e.preventDefault();
+                        previewGrid.scrollLeft += e.deltaY;
+                    }
+                });
+            }
+        }
+
+        // 处理文件
+        async function handleFiles(files) {
+            const images = Array.from(files).filter(f => f.type.startsWith('image/'));
+            if (!images.length) {
+                showToast('请选择图片文件', 'error');
+                return;
+            }
+
+            isFolderMode = false;
+            folderGroups = {};
+            selectedFiles = images;
+
+            // 读取文件为base64（并压缩超大图片）
+            selectedFilesData = [];
+            showToast(`开始处理 ${images.length} 张图片...`, '');
+
+            let processedCount = 0;
+            for (const file of images) {
+                const processed = await processImage(file);
+                selectedFilesData.push(processed);
+
+                processedCount++;
+                if (processedCount % 5 === 0 || processedCount === images.length) {
+                    showToast(`正在处理图片... ${processedCount}/${images.length}`, '');
+                }
+            }
+
+            renderPreview();
+            updateAnalyzeBtn();
+
+            const compressedCount = selectedFilesData.filter(d => d.compressed).length;
+            let message = `已加载 ${images.length} 张图片`;
+            if (compressedCount > 0) {
+                message += `（已压缩 ${compressedCount} 张）`;
+            }
+            showToast(message, 'success');
+        }
+
+        // 处理文件夹
+        async function handleFolders(files) {
+            const allFiles = Array.from(files);
+            const images = allFiles.filter(f => f.type.startsWith('image/'));
+
+            if (!images.length) {
+                showToast('文件夹中没有图片文件', 'error');
+                return;
+            }
+
+            isFolderMode = true;
+            folderGroups = {};
+            selectedFiles = [];
+            selectedFilesData = [];
+
+            showToast(`开始处理 ${images.length} 张图片...`, '');
+
+            // 按文件夹分组
+            const excludedFolders = []; // 记录被排除的备选文件夹
+
+            for (const file of images) {
+                const path = file.webkitRelativePath || file.name;
+                const parts = path.split('/');
+
+                // 获取父文件夹路径
+                let folderPath = '';
+                if (parts.length > 1) {
+                    folderPath = parts.slice(0, -1).join('/');
+                } else {
+                    folderPath = '未分类';
+                }
+
+                const folderName = folderPath.split('/').pop() || folderPath;
+
+                // 检查文件夹名称是否包含"备选"等关键词（排除备选文件夹）
+                const backupKeywords = ['备选', 'backup', 'alt', '替换', '备用', 'bak'];
+                const isBackupFolder = backupKeywords.some(keyword =>
+                    folderName.toLowerCase().includes(keyword.toLowerCase())
+                );
+
+                if (isBackupFolder) {
+                    // 记录被排除的文件夹，并输出详细信息
+                    if (!excludedFolders.includes(folderName)) {
+                        excludedFolders.push(folderName);
+                        const matchedKeyword = backupKeywords.find(kw =>
+                            folderName.toLowerCase().includes(kw.toLowerCase())
+                        );
+                        console.log(`📁 排除备选文件夹: "${folderName}" (包含关键词: "${matchedKeyword}")`);
+                    }
+                    continue; // 跳过备选文件夹
+                }
+
+                if (!folderGroups[folderPath]) {
+                    // 解析文件夹名称：提取SKU编号
+                    // 支持多种格式：
+                    // 格式1: J3-余梦芊-CLO2775（C-曹东-01.04）无动力风帽 -> 摄影师: 曹东, SKU: CLO2775
+                    // 格式2: 张三-DAG0494 -> 摄影师: 张三, SKU: DAG0494
+                    // 格式3: J1_苏贤佩_HUI3162_（C级-佳宝-1.4）梅花星形混凝土插扣固定钉 -> 摄影师: 佳宝, SKU: HUI3162
+                    // 格式4: J15_优化 -> 摄影师: 未知, SKU: 优化
+                    let photographer = '未知';
+                    let taskName = folderName; // SKU编号
+
+                    // 统一处理：将下划线替换为横杠
+                    let normalizedName = folderName.replace(/_/g, '-');
+
+                    // 优先解析括号格式
+                    const bracketMatch = normalizedName.match(/[（(]([A-Z级])-?([^-）)]+)/);
+                    if (bracketMatch) {
+                        // 找到了括号格式，如 （C-曹东-01.04）或（C级-佳宝-1.4）
+                        photographer = bracketMatch[2].split('-')[0]; // 提取摄影师名字，去掉日期
+
+                        // 提取SKU编号：找第三段（在括号之前）
+                        const parts = normalizedName.split('-');
+                        if (parts.length >= 3) {
+                            // 第三段可能包含括号，需要去掉括号及后面的内容
+                            const thirdPart = parts[2];
+                            const skuMatch = thirdPart.match(/^([^（(]+)/);
+                            if (skuMatch) {
+                                taskName = skuMatch[1].trim();
+                            }
+                        }
+                    } else if (normalizedName.includes('-')) {
+                        // 简单格式：摄影师名字-SKU编号
+                        const parts = normalizedName.split('-');
+                        if (parts.length >= 2) {
+                            // 第一段可能是编号+摄影师名字（如J3余梦芊），需要提取
+                            const firstPart = parts[0];
+                            // 去掉开头的编号（如J3、J15等）
+                            const nameMatch = firstPart.match(/^[A-Z]?\d*(.+)$/);
+                            if (nameMatch && nameMatch[1]) {
+                                photographer = nameMatch[1].trim();
+                            } else {
+                                photographer = firstPart.trim();
+                            }
+
+                            // 第二段是SKU
+                            taskName = parts[1].trim();
+                        }
+                    } else {
+                        // 无法解析的格式，保持原名
+                        taskName = folderName;
+                    }
+
+                    folderGroups[folderPath] = {
+                        name: folderName,
+                        fullPath: folderPath,
+                        photographer: photographer,
+                        taskName: taskName,
+                        files: [],
+                        filesData: []
+                    };
+                }
+
+                folderGroups[folderPath].files.push(file);
+            }
+
+            // 处理每个文件夹的图片
+            let processedCount = 0;
+            for (const folderPath in folderGroups) {
+                const group = folderGroups[folderPath];
+                for (const file of group.files) {
+                    const processed = await processImage(file);
+                    group.filesData.push(processed);
+                    selectedFiles.push(file);
+                    selectedFilesData.push(processed);
+
+                    processedCount++;
+                    if (processedCount % 5 === 0 || processedCount === selectedFiles.length) {
+                        showToast(`正在处理图片... ${processedCount}/${selectedFiles.length}`, '');
+                    }
+                }
+            }
+
+            renderPreview();
+            updateAnalyzeBtn();
+
+            const folderCount = Object.keys(folderGroups).length;
+            const compressedCount = selectedFilesData.filter(d => d.compressed).length;
+
+            // 输出识别到的文件夹详细信息
+            console.log('✅ 成功识别的文件夹:');
+            Object.values(folderGroups).forEach((group, index) => {
+                console.log(`  ${index + 1}. ${group.name} (摄影师: ${group.photographer}, SKU: ${group.taskName}, ${group.files.length}张图片)`);
+            });
+
+            let message = `已加载 ${folderCount} 个文件夹，共 ${selectedFiles.length} 张图片`;
+            if (compressedCount > 0) {
+                message += `（已压缩 ${compressedCount} 张）`;
+            }
+
+            // 显示主要成功消息
+            showToast(message, 'success');
+
+            // 如果有被排除的文件夹，额外显示警告
+            if (excludedFolders.length > 0) {
+                console.warn('⚠️ 已排除以下备选文件夹:', excludedFolders);
+                setTimeout(() => {
+                    showToast(`⚠️ 已自动排除 ${excludedFolders.length} 个备选文件夹：\n${excludedFolders.join('\n')}`, 'warning');
+                }, 1500);
+            }
+        }
+
+        // 处理单张图片（压缩超大图片）
+        async function processImage(file) {
+            return new Promise((resolve, reject) => {
+                const maxSize = 5 * 1024 * 1024; // 5MB（降低阈值，加快批量处理）
+                const maxDimension = 1920; // 最大尺寸限制为1920px
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // 判断是否需要压缩
+                        const needCompress = file.size > maxSize || img.width > maxDimension || img.height > maxDimension;
+
+                        if (!needCompress) {
+                            // 小图片直接返回
+                            readFileAsBase64(file).then(base64 => {
+                                resolve({
+                                    mimeType: file.type,
+                                    data: base64,
+                                    originalSize: file.size,
+                                    compressed: false
+                                });
+                            }).catch(reject);
+                            return;
+                        }
+
+                        // 需要压缩
+                        const canvas = document.createElement('canvas');
+                        let scale = 1;
+
+                        // 计算缩放比例
+                        if (img.width > maxDimension || img.height > maxDimension) {
+                            scale = Math.min(maxDimension / img.width, maxDimension / img.height);
+                        }
+
+                        canvas.width = Math.floor(img.width * scale);
+                        canvas.height = Math.floor(img.height * scale);
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                        // 根据文件大小动态调整质量
+                        let quality = 0.85;
+                        if (file.size > 10 * 1024 * 1024) {
+                            quality = 0.7; // 超大文件用更低质量
+                        } else if (file.size > maxSize) {
+                            quality = 0.8;
+                        }
+
+                        // 压缩
+                        const tryCompress = (q) => {
+                            canvas.toBlob((blob) => {
+                                if (blob.size <= maxSize || q <= 0.5) {
+                                    // 转为base64
+                                    const reader2 = new FileReader();
+                                    reader2.onload = () => {
+                                        const base64 = reader2.result.split(',')[1];
+                                        const compressionRatio = ((1 - blob.size / file.size) * 100).toFixed(0);
+                                        if (blob.size < file.size * 0.9) { // 压缩效果明显才记录
+                                            console.log(`压缩: ${file.name.substring(0, 20)}... ${(file.size/1024/1024).toFixed(2)}MB -> ${(blob.size/1024/1024).toFixed(2)}MB (${compressionRatio}%)`);
+                                        }
+                                        resolve({
+                                            mimeType: blob.type,
+                                            data: base64,
+                                            originalSize: file.size,
+                                            compressedSize: blob.size,
+                                            compressed: true
+                                        });
+                                    };
+                                    reader2.readAsDataURL(blob);
+                                } else {
+                                    // 继续降低质量
+                                    tryCompress(q - 0.1);
+                                }
+                            }, 'image/jpeg', q);
+                        };
+
+                        tryCompress(quality);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // 图片懒加载Observer
+        let imageObserver = null;
+        function initLazyLoadObserver() {
+            if (imageObserver) {
+                imageObserver.disconnect();
+            }
+
+            imageObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        const file = img.dataset.file;
+                        if (file && window.lazyLoadFileMap && window.lazyLoadFileMap.has(file)) {
+                            const fileObj = window.lazyLoadFileMap.get(file);
+                            img.src = URL.createObjectURL(fileObj);
+                            img.removeAttribute('data-src');
+                            img.removeAttribute('data-file');
+                            imageObserver.unobserve(img);
+                        }
+                    }
+                });
+            }, {
+                rootMargin: '50px',
+                threshold: 0.01
+            });
+        }
+
+        function renderPreview() {
+            const section = document.getElementById('previewSection');
+            const folderGroupsDiv = document.getElementById('folderGroups');
+            const grid = document.getElementById('previewGrid');
+            const imageCount = document.getElementById('imageCount');
+            const folderCount = document.getElementById('folderCount');
+
+            if (!selectedFiles.length) {
+                section.classList.remove('active');
+                return;
+            }
+
+            section.classList.add('active');
+            imageCount.textContent = selectedFiles.length;
+
+            // 初始化懒加载Observer
+            initLazyLoadObserver();
+
+            // 创建文件映射表用于懒加载
+            window.lazyLoadFileMap = new Map();
+            selectedFiles.forEach((file, index) => {
+                window.lazyLoadFileMap.set(`file-${index}`, file);
+            });
+
+            if (isFolderMode) {
+                // 文件夹模式：显示分组
+                const folderCountNum = Object.keys(folderGroups).length;
+                folderCount.textContent = folderCountNum;
+                folderCount.parentElement.style.display = 'inline';
+
+                // 自动填充摄影师和任务名称（如果只有一个文件夹）
+                if (folderCountNum === 1) {
+                    const firstFolder = Object.values(folderGroups)[0];
+                    if (firstFolder.photographer && firstFolder.photographer !== '未知') {
+                        document.getElementById('photographer').value = firstFolder.photographer;
+                    }
+                    if (firstFolder.taskName) {
+                        document.getElementById('taskName').value = firstFolder.taskName;
+                    }
+                }
+
+                folderGroupsDiv.style.display = 'block';
+                grid.style.display = 'none';
+
+                folderGroupsDiv.innerHTML = '';
+                let folderIndex = 0;
+                let globalFileIndex = 0;
+
+                for (const folderPath in folderGroups) {
+                    const group = folderGroups[folderPath];
+                    const div = document.createElement('div');
+                    div.className = 'folder-group';
+
+                    const header = document.createElement('div');
+                    header.className = 'folder-header';
+                    header.innerHTML = `
+                        <div class="folder-name" title="${group.fullPath}">
+                            📁 ${group.name}
+                            ${group.photographer !== '未知' ? `<br><span style="font-size:11px;color:#666;font-weight:400;">👤 ${group.photographer} | 📦 ${group.taskName}</span>` : ''}
+                        </div>
+                        <div class="folder-count">${group.files.length} 张图片</div>
+                    `;
+
+                    const preview = document.createElement('div');
+                    preview.className = 'folder-preview collapsed';
+                    preview.id = `preview-${folderIndex}`;
+
+                    // 创建文件夹专用的文件映射
+                    group.files.forEach((file, idx) => {
+                        const fileKey = `folder-${folderIndex}-file-${idx}`;
+                        window.lazyLoadFileMap.set(fileKey, file);
+                        globalFileIndex++;
+                    });
+
+                    // 显示前3张作为预览，其余懒加载
+                    const previewLimit = 3;
+                    group.files.forEach((file, idx) => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'preview-item';
+                        const img = document.createElement('img');
+                        const fileKey = `folder-${folderIndex}-file-${idx}`;
+
+                        if (idx < previewLimit) {
+                            // 前3张直接加载
+                            img.src = URL.createObjectURL(file);
+                        } else {
+                            // 其余使用懒加载
+                            img.setAttribute('data-src', 'lazy');
+                            img.setAttribute('data-file', fileKey);
+                            imageObserver.observe(img);
+                        }
+
+                        itemDiv.appendChild(img);
+                        preview.appendChild(itemDiv);
+                    });
+
+                    div.appendChild(header);
+                    div.appendChild(preview);
+
+                    // 如果图片超过6张，添加展开/收起按钮
+                    if (group.files.length > 6) {
+                        const expandBtn = document.createElement('button');
+                        expandBtn.className = 'btn-expand';
+                        expandBtn.textContent = `展开查看全部 ${group.files.length} 张图片 ▼`;
+                        const currentIndex = folderIndex;
+                        expandBtn.onclick = function() {
+                            const previewDiv = document.getElementById(`preview-${currentIndex}`);
+                            const isCollapsed = previewDiv.classList.contains('collapsed');
+
+                            if (isCollapsed) {
+                                previewDiv.classList.remove('collapsed');
+                                expandBtn.textContent = '收起 ▲';
+                                // 展开时触发懒加载
+                                const lazyImages = previewDiv.querySelectorAll('img[data-src]');
+                                lazyImages.forEach(img => {
+                                    if (!imageObserver) initLazyLoadObserver();
+                                    imageObserver.observe(img);
+                                });
+                            } else {
+                                previewDiv.classList.add('collapsed');
+                                expandBtn.textContent = `展开查看全部 ${group.files.length} 张图片 ▼`;
+                            }
+                        };
+                        div.appendChild(expandBtn);
+                    }
+
+                    folderGroupsDiv.appendChild(div);
+                    folderIndex++;
+                }
+            } else {
+                // 单文件模式：限制初始显示数量
+                folderCount.parentElement.style.display = 'none';
+                folderGroupsDiv.style.display = 'none';
+                grid.style.display = 'grid';
+
+                grid.innerHTML = '';
+
+                const initialDisplayLimit = 50; // 初始只显示50张
+                const showAllBtn = selectedFiles.length > initialDisplayLimit;
+
+                selectedFiles.forEach((file, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'preview-item';
+                    const img = document.createElement('img');
+                    const fileKey = `file-${index}`;
+
+                    if (index < initialDisplayLimit) {
+                        if (index < 20) {
+                            // 前20张直接加载
+                            img.src = URL.createObjectURL(file);
+                        } else {
+                            // 20-50张使用懒加载
+                            img.setAttribute('data-src', 'lazy');
+                            img.setAttribute('data-file', fileKey);
+                            imageObserver.observe(img);
+                        }
+                        div.appendChild(img);
+                        grid.appendChild(div);
+                    } else {
+                        // 超过50张的先不渲染，等用户点击"显示全部"
+                        div.setAttribute('data-pending', fileKey);
+                        div.style.display = 'none';
+                        div.appendChild(img);
+                        grid.appendChild(div);
+                    }
+                });
+
+                // 如果图片超过50张，添加"显示全部"按钮
+                if (showAllBtn) {
+                    const showAllBtnEl = document.createElement('button');
+                    showAllBtnEl.className = 'btn-expand';
+                    showAllBtnEl.textContent = `显示全部 ${selectedFiles.length} 张图片 ▼`;
+                    showAllBtnEl.style.marginTop = '10px';
+                    showAllBtnEl.style.gridColumn = '1 / -1';
+                    showAllBtnEl.onclick = function() {
+                        const pendingItems = grid.querySelectorAll('[data-pending]');
+                        pendingItems.forEach(item => {
+                            item.style.display = 'block';
+                            const img = item.querySelector('img');
+                            const fileKey = item.getAttribute('data-pending');
+                            img.setAttribute('data-src', 'lazy');
+                            img.setAttribute('data-file', fileKey);
+                            imageObserver.observe(img);
+                            item.removeAttribute('data-pending');
+                        });
+                        showAllBtnEl.remove();
+                    };
+                    grid.appendChild(showAllBtnEl);
+                }
+            }
+        }
+
+        function clearImages() {
+            selectedFiles = [];
+            selectedFilesData = [];
+            folderGroups = {};
+            isFolderMode = false;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('folderInput').value = '';
+
+            // 清理懒加载资源
+            if (imageObserver) {
+                imageObserver.disconnect();
+            }
+            if (window.lazyLoadFileMap) {
+                window.lazyLoadFileMap.clear();
+            }
+
+            renderPreview();
+            updateAnalyzeBtn();
+        }
+
+        function updateAnalyzeBtn() {
+            document.getElementById('analyzeBtn').disabled = !geminiApiKey || !selectedFiles.length;
+        }
+
+        // 更新变体选项
+        function updateVariantOptions() {
+            const variantType = document.getElementById('variantType').value;
+            const variantCount = parseInt(document.getElementById('variantCount').value) || 1;
+            const discountRow = document.getElementById('discountRow');
+            const discountHint = document.getElementById('discountHint');
+            const discountRate = document.getElementById('discountRate');
+
+            if ((variantType === 'color' || variantType === 'batch') && variantCount > 1) {
+                discountRow.style.display = 'flex';
+
+                if (variantType === 'color') {
+                    discountHint.textContent = '（建议5-8折）';
+                    discountRate.value = '0.6'; // 默认6折
+                } else if (variantType === 'batch') {
+                    discountHint.textContent = '（建议3-8折）';
+                    discountRate.value = '0.5'; // 默认5折
+                }
+            } else {
+                discountRow.style.display = 'none';
+                discountRate.value = '1.0';
+            }
+        }
+
+        // AI分析
+        async function analyzeImages() {
+            if (!geminiApiKey || !selectedFiles.length) return;
+
+            if (isFolderMode) {
+                // 文件夹批量评分模式
+                await analyzeFolders();
+            } else {
+                // 单套图片评分模式
+                const btn = document.getElementById('analyzeBtn');
+                const loading = document.getElementById('loadingOverlay');
+
+                btn.disabled = true;
+                btn.innerHTML = '<div class="spinner"></div><span>分析中...</span>';
+                loading.classList.add('active');
+
+                try {
+                    const result = await analyzeSingleSet(selectedFilesData, selectedFiles.length);
+                    currentResult = result;
+                    displayResult(result);
+                    showToast('AI分析完成！', 'success');
+                } catch (error) {
+                    showToast('分析失败: ' + error.message, 'error');
+                    console.error(error);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>🔍 开始AI自动评分</span>';
+                    loading.classList.remove('active');
+                    updateAnalyzeBtn();
+                }
+            }
+        }
+
+        // 批量评分文件夹
+        async function analyzeFolders() {
+            const btn = document.getElementById('analyzeBtn');
+            const loading = document.getElementById('loadingOverlay');
+            const loadingText = document.querySelector('.loading-text');
+            const loadingSubtext = document.querySelector('.loading-subtext');
+
+            const folderPaths = Object.keys(folderGroups);
+
+            // 检测是否是批量变体
+            let isVariant = false;
+            let discountRate = 1.0;
+
+            if (folderPaths.length > 1) {
+                // 检查是否来自同一摄影师
+                const photographers = [...new Set(Object.values(folderGroups).map(g => g.photographer))];
+
+                if (photographers.length === 1) {
+                    // 询问用户是否是批量变体
+                    const variantConfirm = confirm(
+                        `检测到 ${folderPaths.length} 个文件夹来自同一摄影师（${photographers[0]}）。\n\n这些是同一产品的批量变体吗？\n\n点击"确定"表示是批量变体（将应用折扣）\n点击"取消"表示是不同产品（不应用折扣）`
+                    );
+
+                    if (variantConfirm) {
+                        isVariant = true;
+                        // 让用户选择折扣率
+                        const discountInput = prompt(
+                            `请输入批量折扣率（0.3-1.0）：\n\n推荐折扣率：\n• 相同产品不同颜色：0.7（7折）\n• 相同系列产品：0.6（6折）\n• 大批量SKU：0.5（5折）\n• 高度相似产品：0.4（4折）\n• 完全通用图片：0.3（3折）`,
+                            '0.7'
+                        );
+
+                        if (discountInput !== null) {
+                            const rate = parseFloat(discountInput);
+                            if (rate >= 0.3 && rate <= 1.0) {
+                                discountRate = rate;
+                            } else {
+                                showToast('折扣率无效，使用默认7折', 'warning');
+                                discountRate = 0.7;
+                            }
+                        } else {
+                            isVariant = false; // 用户取消了
+                        }
+                    }
+                }
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div><span>批量分析中...</span>';
+            loading.classList.add('active');
+
+            const results = [];
+
+            try {
+                for (let i = 0; i < folderPaths.length; i++) {
+                    const folderPath = folderPaths[i];
+                    const group = folderGroups[folderPath];
+
+                    loadingText.textContent = `正在分析第 ${i + 1}/${folderPaths.length} 个任务`;
+                    loadingSubtext.textContent = '正在欣赏摄影师的作品...';
+
+                    const result = await analyzeSingleSet(group.filesData, group.files.length, group.name);
+
+                    if (result) {
+                        // 计算基础分数
+                        const baseScore = result.finalScore?.suggestedScore || result.suggestedScore || 0;
+
+                        // 如果是变体，应用折扣
+                        let finalScore = baseScore;
+                        if (isVariant) {
+                            finalScore = baseScore * discountRate;
+                            finalScore = Math.round(finalScore * 20) / 20; // 四舍五入到0.05
+                        }
+
+                        results.push({
+                            folderName: group.name,
+                            folderPath: group.fullPath,
+                            photographer: group.photographer,
+                            taskName: group.taskName,
+                            result: result,
+                            baseScore: baseScore,
+                            finalScore: finalScore,
+                            isVariant: isVariant,
+                            discountRate: discountRate
+                        });
+                    }
+
+                    // 添加延迟避免API频率限制
+                    if (i < folderPaths.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                }
+
+                // 显示批量结果
+                displayBatchResults(results);
+
+                let successMsg = `批量评分完成！共评分 ${results.length} 个文件夹`;
+                if (isVariant) {
+                    successMsg += `\n已应用${(discountRate * 100).toFixed(0)}%折扣`;
+                }
+                showToast(successMsg, 'success');
+
+            } catch (error) {
+                showToast('批量分析失败: ' + error.message, 'error');
+                console.error(error);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>🔍 开始AI自动评分</span>';
+                loading.classList.remove('active');
+                loadingText.textContent = 'AI正在分析图片...';
+                loadingSubtext.textContent = '正在欣赏摄影师的作品...';
+                updateAnalyzeBtn();
+            }
+        }
+
+        // 分析单套图片
+        async function analyzeSingleSet(filesData, totalCount, folderName = null) {
+            try {
+                // 统计处理后的图片大小
+                const compressedCount = filesData.filter(d => d.compressed).length;
+                if (compressedCount > 0) {
+                    console.log(`已自动压缩 ${compressedCount} 张超大图片`);
+                }
+
+                // 通义千问VL支持多张图片，建议每次不超过20张以获得最佳效果
+                const maxImages = Math.min(filesData.length, 20);
+                console.log(`正在分析 ${maxImages} 张图片（共${filesData.length}张）${folderName ? ` - ${folderName}` : ''}`);
+
+                // 构建消息内容 - 使用OpenAI兼容格式
+                const messageContent = [
+                    {
+                        type: 'text',
+                        text: `${SCORING_PROMPT}\n\n这是一套产品拍摄图片，共${totalCount}张。请分析这些图片并给出评分。${totalCount > maxImages ? `（由于数量较多，我只展示了前${maxImages}张作为样本）` : ''}`
+                    }
+                ];
+
+                // 添加图片 - 使用OpenAI格式的image_url
+                for (let i = 0; i < maxImages; i++) {
+                    const img = filesData[i];
+                    messageContent.push({
+                        type: 'image_url',
+                        image_url: {
+                            url: `data:${img.mimeType};base64,${img.data}`
+                        }
+                    });
+                }
+
+                const requestBody = {
+                    model: 'qwen-vl-plus', // 使用plus视觉模型
+                    messages: [
+                        {
+                            role: 'user',
+                            content: messageContent
+                        }
+                    ],
+                    temperature: 0.1,
+                    max_tokens: 2048
+                };
+
+                const response = await fetch(
+                    'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${geminiApiKey}`
+                        },
+                        body: JSON.stringify(requestBody)
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('通义千问 API错误:', errorData);
+
+                    // 详细错误信息
+                    let errorMsg = errorData.message || errorData.error?.message || '调用通义千问失败';
+                    if (errorData.code) {
+                        errorMsg = `[${errorData.code}] ${errorMsg}`;
+                    }
+
+                    // 常见错误的友好提示
+                    if (errorMsg.includes('Arrearage') || errorMsg.includes('InvalidApiKey')) {
+                        errorMsg = '❌ API Key无效或账户欠费，请检查API Key或充值';
+                    } else if (errorMsg.includes('Throttling') || errorMsg.includes('rate') || errorMsg.includes('too many')) {
+                        errorMsg = '❌ 请求过于频繁，请稍后再试（建议等待1分钟）';
+                    } else if (errorMsg.includes('InvalidParameter') || errorMsg.includes('image')) {
+                        errorMsg = '❌ 图片格式或大小不符合要求，请尝试减少图片数量';
+                    }
+
+                    throw new Error(errorMsg);
+                }
+
+                const data = await response.json();
+                const aiResponse = data.choices?.[0]?.message?.content;
+
+                if (!aiResponse) {
+                    throw new Error('AI未返回有效结果');
+                }
+
+                console.log('AI原始返回:', aiResponse);
+
+                // 解析JSON
+                let result;
+                try {
+                    let cleanJson = aiResponse.trim();
+                    cleanJson = cleanJson.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+                    cleanJson = cleanJson.replace(/^```\s*/i, '').replace(/\s*```$/, '');
+                    result = JSON.parse(cleanJson);
+                } catch (e) {
+                    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        result = JSON.parse(jsonMatch[0]);
+                    } else {
+                        throw new Error('无法解析AI返回的评分结果');
+                    }
+                }
+
+                // 兼容旧格式和新格式
+                if (!result.finalScore) {
+                    // 旧格式，转换为新格式
+                    result = {
+                        dimension1_quantity: {
+                            totalImages: result.totalImages || totalCount,
+                            backupImages: result.backupImages || 0,
+                            foldedImages: (result.totalImages || totalCount) - (result.effectiveImages || result.totalImages || totalCount),
+                            effectiveImages: result.effectiveImages || result.totalImages || totalCount,
+                            quantityScore: (result.effectiveImages || result.totalImages || totalCount) / 20,
+                            imageBreakdown: `${result.totalImages || totalCount}张原始图片`
+                        },
+                        dimension2_difficulty: {
+                            level: result.difficulty || "正常",
+                            productType: result.productType || "未知",
+                            difficultyFactors: result.specialFeatures || [],
+                            difficultyAdjustment: 0,
+                            difficultyDescription: result.difficulty || "正常难度"
+                        },
+                        finalScore: {
+                            suggestedScore: result.suggestedScore || 0,
+                            calculation: result.reasoning || "",
+                            breakdown: "旧格式数据，无分数构成"
+                        },
+                        sceneImages: result.sceneImages || 0,
+                        sceneQuality: result.sceneQuality || "无",
+                        qualityScore: result.qualityScore || 0,
+                        reasoning: result.reasoning || ""
+                    };
+                }
+
+                return result;
+
+            } catch (error) {
+                console.error('分析错误:', error);
+                throw error;
+            }
+        }
+
+        // 显示结果
+        function displayResult(result) {
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('resultSection').classList.add('active');
+
+            // 显示AI评分理由框（单个评分时显示）
+            document.querySelector('.reasoning-box').style.display = 'block';
+
+            // 显示标题卡片（单个评分时需要显示）
+            document.querySelector('.result-title-card').style.display = 'flex';
+
+            // 更新任务名称显示
+            let skuName = '';
+            const taskNameInput = document.getElementById('taskName').value.trim();
+
+            if (taskNameInput) {
+                skuName = taskNameInput;
+            } else if (isFolderMode && Object.keys(folderGroups).length === 1) {
+                // 如果是单个文件夹模式，显示文件夹的任务名称
+                const firstFolder = Object.values(folderGroups)[0];
+                skuName = firstFolder.taskName || firstFolder.name;
+            }
+
+            // 只显示SKU，不显示其他文字
+            if (skuName) {
+                document.getElementById('resultTaskName').textContent = skuName;
+            } else {
+                document.getElementById('resultTaskName').textContent = 'SKU';
+            }
+
+            // 变体折算
+            const variantCount = parseInt(document.getElementById('variantCount').value) || 1;
+            const variantType = document.getElementById('variantType').value;
+            const discountRate = parseFloat(document.getElementById('discountRate').value) || 1.0;
+            const discountReason = document.getElementById('discountReason').value.trim();
+
+            const baseSuggestedScore = result.finalScore?.suggestedScore || result.suggestedScore || 0;
+            const finalScore = calculateVariantScore(baseSuggestedScore, variantCount, variantType, discountRate);
+
+            // 显示分数
+            document.getElementById('scoreValue2').textContent = finalScore.toFixed(2) + '分';
+
+            // 隐藏批量汇总（单个评分不显示）
+            document.getElementById('batchSummary').style.display = 'none';
+
+            // 提取两个维度的数据
+            const dim1 = result.dimension1_quantity || {};
+            const dim2 = result.dimension2_difficulty || {};
+
+            // 构建简化的评分理由文本
+            let reasoningText = '';
+
+            // 添加图片构成说明
+            if (dim1.imageBreakdown) {
+                reasoningText += dim1.imageBreakdown;
+            }
+
+            // 添加折算说明
+            if (dim1.foldedImages > 0) {
+                reasoningText += `，${dim1.foldedImages}张折算减少`;
+            }
+            if (dim1.backupImages > 0) {
+                reasoningText += `，已排除备选${dim1.backupImages}张`;
+            }
+
+            reasoningText += `，共${dim1.effectiveImages || dim1.totalImages || 0}张有效图。`;
+
+            // 添加产品难度说明
+            if (result.reasoning) {
+                reasoningText += '\n\n' + result.reasoning;
+            } else if (dim2.difficultyDescription) {
+                reasoningText += '\n\n' + dim2.difficultyDescription;
+            }
+
+            // 添加变体折算说明
+            if (variantCount > 1) {
+                reasoningText += `\n\n🔄 变体折算：单套 ${baseSuggestedScore.toFixed(2)} 分 × ${variantCount} 款`;
+                if (discountRate < 1.0) {
+                    reasoningText += ` × ${(discountRate * 100).toFixed(0)}%折扣`;
+                }
+                reasoningText += ` = ${finalScore.toFixed(2)} 分`;
+                if (discountReason) {
+                    reasoningText += `（${discountReason}）`;
+                }
+            }
+
+            document.getElementById('reasoningText').textContent = reasoningText;
+
+            // 保存到currentResult
+            currentResult.finalScore = finalScore;
+            currentResult.variantCount = variantCount;
+            currentResult.variantType = variantType;
+            currentResult.discountRate = discountRate;
+            currentResult.discountReason = discountReason;
+        }
+
+        // 变体折算（新版）
+        function calculateVariantScore(single, count, variantType, discountRate) {
+            if (count <= 1) return single;
+
+            // 使用用户自定义的折扣率
+            const total = single * count * discountRate;
+
+            // 四舍五入到0.05
+            return Math.round(total * 20) / 20;
+        }
+
+        // 显示批量结果
+        function displayBatchResults(results) {
+            document.getElementById('emptyState').style.display = 'none';
+            const resultSection = document.getElementById('resultSection');
+            resultSection.classList.add('active');
+
+            // 按摄影师分组统计
+            const photographerStats = {};
+            results.forEach(item => {
+                const photographer = item.photographer || '未知';
+                if (!photographerStats[photographer]) {
+                    photographerStats[photographer] = {
+                        name: photographer,
+                        tasks: [],
+                        totalScore: 0,
+                        count: 0
+                    };
+                }
+                photographerStats[photographer].tasks.push(item);
+                // 使用折扣后的finalScore
+                const score = item.finalScore;
+                photographerStats[photographer].totalScore += score;
+                photographerStats[photographer].count++;
+            });
+
+            // 计算总分（使用折扣后的finalScore）
+            const totalScore = results.reduce((sum, r) => sum + r.finalScore, 0);
+            const photographerCount = Object.keys(photographerStats).length;
+
+            // 检测是否有折扣
+            const hasDiscount = results.some(r => r.isVariant);
+            const discountRate = hasDiscount ? results[0].discountRate : 1.0;
+
+            // 隐藏标题卡片和AI分析框（批量评分时不显示）
+            document.querySelector('.result-title-card').style.display = 'none';
+            document.querySelector('.reasoning-box').style.display = 'none';
+
+            // 显示批量汇总区域
+            const batchSummary = document.getElementById('batchSummary');
+            batchSummary.style.display = 'block';
+
+            // 构建批量汇总HTML
+            let summaryHtml = `
+                <div style="background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border: 2px solid #7dd3fc; border-radius: var(--radius); padding: 20px 24px; margin-bottom: 16px; box-shadow: var(--shadow-sm);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="font-size: 16px; font-weight: 700; color: #0c4a6e; margin: 0;">📊 批量评分汇总${hasDiscount ? ` （已应用${(discountRate * 100).toFixed(0)}%折扣）` : ''}</h4>
+                        <div style="font-size: 32px; font-weight: 800; color: var(--primary); text-shadow: 0 2px 4px rgba(91, 127, 255, 0.15);">${totalScore.toFixed(2)} 分</div>
+                    </div>
+                    <div style="font-size: 13px; color: #075985;">
+                        <strong>${photographerCount}</strong> 位摄影师，共 <strong>${results.length}</strong> 个任务
+                    </div>
+                </div>
+            `;
+
+            // 按摄影师显示任务列表
+            Object.values(photographerStats).forEach(stat => {
+                stat.tasks.forEach(item => {
+                    const r = item.result;
+                    const effectiveImages = r.dimension1_quantity?.effectiveImages || r.effectiveImages || r.totalImages || 0;
+
+                    // 显示折扣信息
+                    let scoreDisplay = '';
+                    if (item.isVariant && item.discountRate < 1.0) {
+                        scoreDisplay = `
+                            <div style="text-align: right;">
+                                <div style="font-size: 24px; font-weight: 800; color: var(--success); text-shadow: 0 2px 4px rgba(16, 185, 129, 0.15);">
+                                    ${item.finalScore.toFixed(2)} 分
+                                </div>
+                                <div style="font-size: 12px; color: var(--text-light); margin-top: 4px;">
+                                    原${item.baseScore.toFixed(2)} × ${(item.discountRate * 100).toFixed(0)}%
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        scoreDisplay = `
+                            <div style="font-size: 24px; font-weight: 800; color: var(--success); text-shadow: 0 2px 4px rgba(16, 185, 129, 0.15);">
+                                ${item.finalScore.toFixed(2)} 分
+                            </div>
+                        `;
+                    }
+
+                    summaryHtml += `
+                        <div style="border: 1px solid var(--border); background: white; margin-bottom: 12px; padding: 16px; border-radius: var(--radius-sm); transition: var(--transition);" onmouseover="this.style.boxShadow='var(--shadow-sm)'" onmouseout="this.style.boxShadow='none'">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <div style="font-weight: 700; font-size: 16px; color: var(--text);">${item.taskName || item.folderName}</div>
+                                ${scoreDisplay}
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-light); margin-bottom: 6px;">
+                                👤 ${item.photographer || '未知'} | 📷 ${effectiveImages}张有效图
+                            </div>
+                            ${r.reasoning ? `<div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; padding-top: 8px; border-top: 1px solid var(--border-light);">${r.reasoning}</div>` : ''}
+                        </div>
+                    `;
+                });
+            });
+
+            batchSummary.innerHTML = summaryHtml;
+
+            // 保存批量结果到currentResult
+            currentResult = {
+                isBatch: true,
+                batchResults: results,
+                totalScore: totalScore,
+                photographerStats: photographerStats
+            };
+        }
+
+        // 保存结果
+        function saveResult() {
+            if (!currentResult) return;
+
+            // 批量保存
+            if (currentResult.isBatch) {
+                const results = currentResult.batchResults;
+                let savedCount = 0;
+
+                results.forEach(item => {
+                    const r = item.result;
+                    const totalImages = r.dimension1_quantity?.totalImages || r.totalImages || 0;
+
+                    const record = {
+                        id: Date.now() + savedCount,
+                        date: new Date().toISOString().split('T')[0],
+                        time: new Date().toLocaleTimeString('zh-CN'),
+                        photographer: item.photographer,
+                        taskName: item.taskName,
+                        imageCount: totalImages,
+                        singleScore: item.baseScore,
+                        finalScore: item.finalScore,
+                        variantCount: 1,
+                        variantType: item.isVariant ? 'batch' : 'single',
+                        discountRate: item.discountRate,
+                        discountReason: item.isVariant ? `批量变体${(item.discountRate * 100).toFixed(0)}%折扣` : '',
+                        details: r
+                    };
+
+                    records.unshift(record);
+                    savedCount++;
+                });
+
+                localStorage.setItem('ai_scoring_records', JSON.stringify(records));
+                renderHistory();
+                resetAll();
+                showToast(`批量保存成功！已保存 ${savedCount} 条记录`, 'success');
+                return;
+            }
+
+            // 单个保存
+            const photographer = document.getElementById('photographer').value.trim();
+            let taskName = document.getElementById('taskName').value.trim();
+
+            if (!photographer) {
+                showToast('请填写摄影师姓名', 'error');
+                return;
+            }
+
+            // 如果没有任务名称，自动生成一个
+            if (!taskName) {
+                const now = new Date();
+                taskName = `评分任务-${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            }
+
+            const baseSuggestedScore = currentResult.finalScore?.suggestedScore || currentResult.suggestedScore || 0;
+            const totalImages = currentResult.dimension1_quantity?.totalImages || currentResult.totalImages || 0;
+
+            const record = {
+                id: Date.now(),
+                date: new Date().toISOString().split('T')[0],
+                time: new Date().toLocaleTimeString('zh-CN'),
+                photographer,
+                taskName,
+                imageCount: totalImages,
+                singleScore: baseSuggestedScore,
+                finalScore: currentResult.finalScore,
+                variantCount: currentResult.variantCount,
+                variantType: currentResult.variantType,
+                discountRate: currentResult.discountRate,
+                discountReason: currentResult.discountReason,
+                details: currentResult
+            };
+
+            records.unshift(record);
+            localStorage.setItem('ai_scoring_records', JSON.stringify(records));
+            renderHistory();
+            resetAll();
+            showToast('保存成功！', 'success');
+        }
+
+        function resetAll() {
+            clearImages();
+            currentResult = null;
+            document.getElementById('emptyState').style.display = 'block';
+            document.getElementById('resultSection').classList.remove('active');
+            document.getElementById('taskName').value = '';
+            document.getElementById('variantCount').value = '1';
+            document.getElementById('variantType').value = 'single';
+            document.getElementById('discountRate').value = '1.0';
+            document.getElementById('discountReason').value = '';
+            updateVariantOptions();
+        }
+
+        // 历史记录
+        function loadRecords() {
+            const saved = localStorage.getItem('ai_scoring_records');
+            if (saved) records = JSON.parse(saved);
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            const bar = document.getElementById('summaryBar');
+            const today = new Date().toISOString().split('T')[0];
+            const todayRecords = records.filter(r => r.date === today);
+
+            if (!todayRecords.length) {
+                list.innerHTML = '';
+                bar.style.display = 'none';
+                return;
+            }
+
+            bar.style.display = 'flex';
+
+            const total = todayRecords.reduce((s, r) => s + r.finalScore, 0);
+            document.getElementById('summaryCount').textContent = todayRecords.length;
+            document.getElementById('summaryTotal').textContent = total.toFixed(2);
+            document.getElementById('summaryAvg').textContent = (total / todayRecords.length).toFixed(2);
+
+            list.innerHTML = todayRecords.map(r => `
+                <div class="history-item">
+                    <div class="history-info">
+                        <h4>${r.taskName}</h4>
+                        <p>${r.photographer} | ${r.imageCount}张 ${r.variantCount > 1 ? `| ${r.variantCount}款` : ''} ${r.discountRate && r.discountRate < 1.0 ? `| ${(r.discountRate * 100).toFixed(0)}%折` : ''} | ${r.time}</p>
+                    </div>
+                    <div class="history-score">${r.finalScore}</div>
+                    <div class="history-actions">
+                        <button class="btn-delete" onclick="deleteRecord(${r.id})">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteRecord(id) {
+            if (confirm('确定删除这条记录吗？')) {
+                records = records.filter(r => r.id !== id);
+                localStorage.setItem('ai_scoring_records', JSON.stringify(records));
+                renderHistory();
+                showToast('删除成功', 'success');
+            }
+        }
+
+        function clearAllRecords() {
+            const today = new Date().toISOString().split('T')[0];
+            const todayRecords = records.filter(r => r.date === today);
+
+            if (!todayRecords.length) {
+                showToast('没有可清空的记录', 'error');
+                return;
+            }
+
+            if (confirm(`确定要清空今日所有 ${todayRecords.length} 条评分记录吗？\n\n此操作不可恢复！`)) {
+                // 只删除今日的记录，保留其他日期的记录
+                records = records.filter(r => r.date !== today);
+                localStorage.setItem('ai_scoring_records', JSON.stringify(records));
+                renderHistory();
+                showToast(`已清空今日 ${todayRecords.length} 条记录`, 'success');
+            }
+        }
+
+        // 手动调整分数
+        function editScore() {
+            if (!currentResult) {
+                showToast('请先完成评分', 'error');
+                return;
+            }
+
+            // 获取当前分数
+            const currentScore = currentResult.finalScore || 0;
+
+            // 弹出输入框
+            const newScoreInput = prompt(
+                `当前AI评分：${currentScore.toFixed(2)} 分\n\n请输入您认为合理的分数（0-5分）：`,
+                currentScore.toFixed(2)
+            );
+
+            if (newScoreInput === null) {
+                return; // 用户取消
+            }
+
+            const newScore = parseFloat(newScoreInput);
+
+            // 验证输入
+            if (isNaN(newScore)) {
+                showToast('请输入有效的数字', 'error');
+                return;
+            }
+
+            if (newScore < 0 || newScore > 10) {
+                showToast('分数范围应在 0-10 之间', 'error');
+                return;
+            }
+
+            // 四舍五入到0.05
+            const roundedScore = Math.round(newScore * 20) / 20;
+
+            // 更新分数
+            currentResult.finalScore = roundedScore;
+            currentResult.manuallyAdjusted = true;
+            currentResult.originalScore = currentScore;
+
+            // 更新显示
+            document.getElementById('scoreValue2').textContent = roundedScore.toFixed(2) + '分';
+
+            // 更新理由文本，添加手动调整说明
+            const reasoningText = document.getElementById('reasoningText');
+            let newReasoningText = reasoningText.textContent;
+
+            // 移除之前的调整说明（如果有）
+            newReasoningText = newReasoningText.replace(/\n\n✏️ 手动调整：.*$/s, '');
+
+            // 添加新的调整说明
+            newReasoningText += `\n\n✏️ 手动调整：AI原始评分 ${currentScore.toFixed(2)} 分 → 人工修正为 ${roundedScore.toFixed(2)} 分`;
+
+            reasoningText.textContent = newReasoningText;
+
+            showToast(`分数已调整为 ${roundedScore.toFixed(2)} 分`, 'success');
+        }
+
+        // 导出
+        function exportData() {
+            const today = new Date().toISOString().split('T')[0];
+            const data = records.filter(r => r.date === today);
+            if (!data.length) {
+                showToast('暂无数据', 'error');
+                return;
+            }
+
+            // 构建CSV内容
+            const csvRows = [];
+
+            // 只保留三列：摄影师、SKU、评分
+            csvRows.push(['摄影师', 'SKU', '评分']);
+
+            data.forEach(r => {
+                csvRows.push([
+                    r.photographer,
+                    r.taskName,
+                    r.finalScore.toFixed(2)
+                ]);
+            });
+
+            const csv = '\uFEFF' + csvRows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `AI评分汇总_${today}.csv`;
+            link.click();
+            showToast('导出成功！', 'success');
+        }
+
+        // Toast
+        function showToast(msg, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast ' + type;
+            toast.classList.add('show');
+            // 警告消息显示更长时间
+            const duration = type === 'warning' ? 5000 : 3000;
+            setTimeout(() => toast.classList.remove('show'), duration);
+        }
+    </script>
+</body>
+</html>
