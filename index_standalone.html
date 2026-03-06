@@ -626,6 +626,123 @@
             transform: scale(1.1);
         }
 
+        /* 文件夹合成缩略图 */
+        .folder-thumb-wrap {
+            position: relative;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: var(--transition);
+            background: var(--bg);
+        }
+        .folder-thumb-wrap:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+        .folder-thumb-wrap canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+        .folder-thumb-hint {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.45);
+            color: #fff;
+            font-size: 11px;
+            text-align: center;
+            padding: 3px 0;
+            pointer-events: none;
+        }
+
+        /* Lightbox */
+        .lightbox-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.92);
+            z-index: 99999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .lightbox-overlay.active { display: flex; }
+        .lightbox-toolbar {
+            position: absolute;
+            top: 14px; left: 0; right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            color: #fff;
+            font-size: 13px;
+            z-index: 2;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 12px; right: 18px;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 28px;
+            cursor: pointer;
+            line-height: 1;
+            opacity: 0.8;
+            z-index: 10;
+        }
+        .lightbox-close:hover { opacity: 1; }
+        .lightbox-img-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            cursor: grab;
+        }
+        .lightbox-img-wrap.grabbing { cursor: grabbing; }
+        .lightbox-img-wrap img {
+            max-width: 90vw;
+            max-height: 85vh;
+            object-fit: contain;
+            transform-origin: center center;
+            transition: transform 0.1s ease;
+            user-select: none;
+            pointer-events: none;
+        }
+        .lightbox-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: #fff;
+            font-size: 28px;
+            width: 48px; height: 64px;
+            border-radius: 6px;
+            cursor: pointer;
+            z-index: 10;
+            transition: background 0.2s;
+        }
+        .lightbox-nav:hover { background: rgba(255,255,255,0.3); }
+        .lightbox-nav.prev { left: 12px; }
+        .lightbox-nav.next { right: 12px; }
+        .lightbox-counter {
+            color: #fff;
+            font-size: 13px;
+            opacity: 0.85;
+        }
+        .lightbox-filename {
+            color: #ccc;
+            font-size: 12px;
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         /* 基本信息 */
         .info-form {
             margin-top: 20px;
@@ -1577,9 +1694,19 @@
                 🤖 AI产品拍摄智能评分系统
                 <span class="version-badge">V1.0</span>
             </h1>
+            <div style="display: flex; align-items: center; gap: 16px;">
             <div class="api-status" onclick="resetApiKey()" title="点击重新设置API Key">
                 <span class="status-dot" id="statusDot"></span>
                 <span id="statusText">请设置API Key</span>
+            </div>
+                <div class="model-selector" style="display: flex; align-items: center; gap: 8px;">
+                    <label for="modelSelect" style="font-size: 13px; color: rgba(255,255,255,0.9); font-weight: 500;">模型：</label>
+                    <select id="modelSelect" style="padding: 6px 10px; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); color: white; font-size: 13px; cursor: pointer; font-weight: 500;" onchange="saveModel()">
+                        <option value="qwen3.5-plus">Qwen 3.5 Plus</option>
+                        <option value="qwen-vl-max">Qwen VL Max</option>
+                        <option value="qwen-vl-plus">Qwen VL Plus</option>
+                    </select>
+                </div>
             </div>
         </header>
 
@@ -1608,73 +1735,71 @@
                     <thead>
                         <tr>
                             <th style="width:15%">分值区间</th>
-                            <th style="width:15%">参考时长</th>
+                            <th style="width:20%">图片数量</th>
                             <th>典型特征</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="score-range">0.1-0.2分</td>
-                            <td>5-10分钟</td>
-                            <td>特别简单的产品，图片极少</td>
+                            <td class="score-range">0.1分</td>
+                            <td>1张</td>
+                            <td>极简单产品，单张图片</td>
                         </tr>
                         <tr>
-                            <td class="score-range">0.25-0.4分</td>
-                            <td>10-25分钟</td>
-                            <td>难度低，图片需求少，含0-1张场景图</td>
+                            <td class="score-range">0.25分</td>
+                            <td>3-5张</td>
+                            <td>很简单，图片需求少</td>
                         </tr>
                         <tr>
-                            <td class="score-range">0.45-0.7分</td>
-                            <td>25-40分钟</td>
-                            <td>正常难度，图片偏少</td>
+                            <td class="score-range">0.3-0.5分</td>
+                            <td>6-10张</td>
+                            <td>简单产品，基础拍摄</td>
                         </tr>
                         <tr>
-                            <td class="score-range">0.75-0.95分</td>
-                            <td>40-55分钟</td>
-                            <td>比常规1分简单，张数偏少；或有一定难度但耗时比常规偏少</td>
+                            <td class="score-range">0.75-0.85分</td>
+                            <td>12-15张</td>
+                            <td>偏简单，图片数量略少于标准</td>
                         </tr>
                         <tr style="background:#fffde7">
                             <td class="score-range">1分（标准）</td>
-                            <td>约1小时</td>
-                            <td><strong>15-20张图，含1-2张场景图，正常拍摄难度</strong></td>
+                            <td>15-20张白底 + 1-2张场景</td>
+                            <td><strong>标准一套图，正常拍摄难度</strong></td>
                         </tr>
                         <tr>
-                            <td class="score-range">1.05-1.2分</td>
-                            <td>1-1.3小时</td>
-                            <td>稍复杂于常规1分</td>
+                            <td class="score-range">1.25分</td>
+                            <td>20-25张</td>
+                            <td>图片数量偏多，或有一定难度</td>
                         </tr>
                         <tr>
-                            <td class="score-range">1.25-1.45分</td>
-                            <td>1.3-1.5小时</td>
-                            <td>图片张数偏多，金属面大拍摄难度高；或大件需组装</td>
+                            <td class="score-range">1.5分</td>
+                            <td>25-35张</td>
+                            <td>图片较多，可能需组装或多角度拍摄</td>
                         </tr>
                         <tr>
-                            <td class="score-range">1.5-1.7分</td>
-                            <td>1.5-1.8小时</td>
-                            <td>需准备道具，P图素材多，需求复杂；或大礼包产品</td>
+                            <td class="score-range">1.75-2分</td>
+                            <td>35-45张</td>
+                            <td>大量图片，复杂产品或礼包组合</td>
                         </tr>
                         <tr>
-                            <td class="score-range">1.75-1.95分</td>
-                            <td>1.8-2小时</td>
-                            <td>更复杂的产品</td>
+                            <td class="score-range">2.5分</td>
+                            <td>45-50张</td>
+                            <td>大礼包+多场景+特殊效果</td>
                         </tr>
                         <tr>
-                            <td class="score-range">2-2.4分</td>
-                            <td>2-2.3小时</td>
-                            <td>组合产品，图片需求多，拆装耗时；或含多张精美场景图</td>
-                        </tr>
-                        <tr>
-                            <td class="score-range">2.5-3分</td>
-                            <td>2.5-3小时</td>
-                            <td>大礼包+手工制作+特殊效果</td>
-                        </tr>
-                        <tr>
-                            <td class="score-range">3分以上</td>
-                            <td>3小时以上</td>
-                            <td>极少数特别复杂产品（需严格把控）</td>
+                            <td class="score-range">3分</td>
+                            <td>>50张</td>
+                            <td>极多图片，发光产品或外景拍摄</td>
                         </tr>
                     </tbody>
                 </table>
+                <div style="margin-top:16px;padding:12px;background:#f5f5f5;border-radius:8px;font-size:13px;line-height:1.8">
+                    <strong>📌 评分要点：</strong><br>
+                    • <strong>主要依据</strong>：图片数量（有效图片数，排除备选和重复）<br>
+                    • <strong>辅助参考</strong>：产品难度（大件、金属、透明材质等）、拍摄耗时<br>
+                    • <strong>折叠规则</strong>：同角度微调3-5张折算为1张；场景图1张≈3张白底图<br>
+                    • <strong>批量折扣</strong>：颜色变体5-8折，系列产品3-8折<br>
+                    • <strong>AI合成图</strong>：文件名含"摄影A图"或"开发以确认"，每张+0.1分
+                </div>
 
                 <div class="reference-tips">
                     <strong>💡 打分要点：</strong><br>
@@ -1887,260 +2012,178 @@
         let folderGroups = {}; // 按文件夹分组 { folderPath: { files: [], filesData: [] } }
         let isFolderMode = false; // 是否为文件夹模式
         let currentResult = null;
+        let selectedModel = "qwen3.5-plus"; // 默认使用Qwen 3.5 Plus
         let records = [];
         let geminiApiKey = null;
 
         // 评分规则提示词
-        const SCORING_PROMPT = `你是一个专业的产品摄影评分专家。请从**图片数量、产品难易程度**两个维度综合分析并给出评分。
+        const SCORING_PROMPT = `你是"电商摄影绩效积分评审官"。你必须严格依据《拍摄积分换算参考标准》进行积分计算与解释。
 
-## 核心评分标准
+## 必须遵守的规则要点
 
-**基准分：0.85分** = 标准一套图（15-20张有效图，正常难度）
+### 1. 判断优先级
+**图片数量 > 产品难易度 > 耗时预估（辅助参考）**
 
-**最终评分** = 0.85分（基准）+ 数量调整 + 难度调整
+### 2. 积分范围与基准
+- 积分范围：0.1–3分
+- **标准分：1.0分** = 标准一套图（15-20张有效图，正常难度）
+- 耗时预估仅作为辅助参考，不作为主要判断依据
 
-## 评分维度
+### 3. 工作量换算规则
+- **同场景微调**：3–5张 ≈ 正常1张用时
+- **白底同角度**：3–6张 ≈ 正常1张用时
+- **场景图**：1张 ≈ 3张不同角度白底图用时
 
-### 维度1：图片数量调整（基于15-20张标准）
-- **标准图片数**：15-20张有效图 = 0分调整
-- **计算公式**：(有效图片数 - 17.5) / 30 = 数量调整分
-  - 17.5张 = 标准中值
-  - 每多30张 = +1分
-  - 每少30张 = -1分
+### 4. AI合成图计分（重要！）
+- **AI图识别**：文件名包含"摄影A图"或"开发以确认"的图片
+- **计分标准**：每张AI图加 0.1 分
+- **雷同变体**：同画面元素70%以上雷同、仅微调提示词的变体，按更低档计，不重复高额给分
+- **常规默认**：0.2分/张（如果质量特别高）
+- **AI合成按**：0.1–0.3分/张
 
-**示例**：
-- 10张有效图：(10-17.5)/30 = -0.25分
-- 17张有效图：(17-17.5)/30 = 0分
-- 25张有效图：(25-17.5)/30 = +0.25分
-- 35张有效图：(35-17.5)/30 = +0.58分
-- 48张有效图：(48-17.5)/30 = +1分
+### 5. 加分与隐藏成本
+- **加分档位**：以0.25为一档加分
+- **隐藏成本**：可+0.25到+1，但必须说明触发原因
+  - 造型、道具、外景
+  - 材质难拍（镭射、炫彩、金属反光）
+  - 发光产品
+  - 复杂组装
+  - 大量后期P图
 
-**重要原则**：严格统计有效工作量，必须严格折算重复细节，宁可多折不可少折
+### 6. 积分档位参考（主要依据图片数量）
+- **0.1分**：1张（极简单）
+- **0.25分**：3-5张（很简单）
+- **0.3–0.5分**：6-10张（简单）
+- **0.75-0.85分**：12-15张（偏简单）
+- **1.0分**：15-20张白底 + 1-2张场景（标准）
+- **1.25分**：20-25张（偏多）
+- **1.5分**：25-35张（较多）
+- **3.0分**：>50张（极多）
+- 注：耗时预估和产品难度作为辅助参考
 
-**图片有效性判断（非常重要！）**：
+### 7. 批量/变体折扣
+- **同类大量SKU**：一般5–6折
+- **变体多**：一般3–8折
+- **颜色变体**：一般5–8折，需考虑"挑选颜色拍/正常拍摄"策略
+- **质量原则**：同样用时质量好少打折，质量低多打折
 
-**❌ 完全排除的图片**（不计入有效数，不计入原始数）：
-1. **备选图片**：
-   - 文件名含"备选"、"backup"、"alt"、"替换"、"备用"等关键词
-   - 同角度拍摄多张（如拍3张选1张），仅最终选用的1张算有效，其他备选完全不算
-   - **强调**：备选图完全不计入原始图片数和有效图片数
-2. **备选文件夹**：
-   - 文件夹名称包含"备选"、"backup"等关键词的整个文件夹都不分析
-   - 这些文件夹在批量评分时会被自动跳过
-
-**需要折算的图片**（必须严格执行，宁可多折不可少折）：
-1. **同产品多角度细节**（手柄、盖子、底部、特写等）：
-   - **小图集折算规则**（总图片数≤10张）：
-     - 即使是不同角度，如果超过4张细节特写，也要严格折算：5-6张细节 → 折为2-3张（减少3张）
-     - 同角度细节：3张 → 折为1张（减少2张）
-   - **中等图集折算规则**（总图片数11-15张）：
-     - 这是最常见的标准配置，必须非常严格折算
-     - 有5张以上细节图的，至少折算3-4张（如13张含6张细节 → 9-10张有效）
-     - 即使是不同角度，如果细节图超过40%，也要严格按比例折算
-     - **原则**：11-15张的图集，有效图应保持在8-11张之间
-   - **大图集折算规则**（总图片数>15张）：
-     - 20张图中有12张细节 → 折算为5张，减少7张
-     - 15张细节 → 折算为6张，减少9张
-     - 10张细节 → 折算为4张，减少6张
-     - 8张细节 → 折算为3张，减少5张
-   - **判断标准**：只要细节图超过总数的30%，就必须严格折算（宁可多折不可少折）
-2. **同角度微调拍摄**（仅曝光/对焦调整）：3-4张 = 1张有效图
-3. **标准六面体产品**（规整拍6面）：6张 = 1-1.5张有效工作量（更严格）
-4. **同款式多颜色/图案**（如黑色3张、白色3张）：
-   - 如果拍摄角度完全相同，第一个颜色按100%计算，其他颜色按30-40%折算
-   - 例如：黑色3张 + 白色3张同角度 = 黑色3张 + 白色1张 = 4张有效图
-
-**不折算的图片**：
-1. 不同款式/颜色/图案的产品：每款都算独立工作
-2. 不同主要角度：正面、侧面、俯视等主要角度
-3. 场景图：每张都算独立工作
-
-### 维度2：产品难度调整
-
-**简单产品（-0.2到-0.15分）**：
-- 小件单一产品
-- 普通塑料、纸质产品
-- 规则形状，易摆放
-- 无特殊材质要求
-
-**正常难度（0分，不调整）**：
-- 15-20张图
-- 含0-2张场景图（**重要**：1-2张场景图是正常配置，不加分）
-- 普通金属、布料产品
-- **塑料型材、管材、棍牌架等常规产品**
-- 常规拍摄难度
-
-**有一定难度（+0.1到+0.15分）**：
-- 金属面积大且反光难控制
-- 需要造型搭配
-- 发光产品需要特殊布光
-- 带钻石/亮片/特殊装饰的产品
-- 带复杂图案/印花/刺绣的产品
-- 含3-4张精美场景图
-
-**较难产品（+0.15到+0.25分）**：
-- 镭射、炫彩等特殊反光材质且拍摄极其精细
-- 需要手工制作过程展示
-- 需要复杂组装的大件产品
-- 需要准备大量道具和场景
-- P图素材多，后期需求极其复杂
-- 大礼包产品（多件组合且需要拆装）
-- 含5张以上精美场景图
-
-**⚠️ 特别注意（这些绝对不加分）**：
-- ❌ 普通金属产品（锅、杯子、工具）→ 0分
-- ❌ 大件产品（不需组装）→ 0分
-- ❌ 常规组合拆装 → 0分
-- ❌ 塑料型材、管材、配件 → 0分
-- ❌ 多角度细节拍摄（这是常规操作）→ 0分
+### 8. 合规风险
+- **风险情况**：
+  - 旧图重复放置不标识
+  - 重复图未删
+  - 变体未做文件管理
+- **处理方式**：必须在输出中标记"需复核/风险"，并建议折扣加严或人工复核
 
 ## 评分计算流程
 
-**第1步：统计图片**
-1. 统计所有图片（包括备选）
-2. **识别并完全排除备选图片**（文件名含"备选"等关键词）
-3. 排除备选后得到原始工作图片数
+**第1步：识别AI图**
+1. 检查文件名是否包含"摄影A图"或"开发以确认"
+2. 统计AI图数量
+3. AI图积分 = AI图数量 × 0.1
 
-**第2步：计算有效图片数**（必须非常严格执行折算，宁可多折不可少折）
-1. 从原始工作图片中识别需要折算的图片（同角度细节、微调等）
-2. **严格计算折算减少的数量**（宁可多折算，不可少折算）
-3. **有效图片数** = 原始工作图片数 - 折算减少数
+**第2步：统计普通拍摄图片**
+1. 统计所有非AI图片
+2. 识别并排除备选图片（文件名含"备选"、"backup"等）
+3. 计算工作量换算（同场景微调、白底同角度、场景图）
+4. 得到有效图片数
 
-**第3步：计算数量调整分**
-- **公式**：(有效图片数 - 17.5) / 30 = 数量调整分
+**第3步：计算基础积分**
+1. 根据有效图片数量对比标准（15-20张）
+2. 参考公式：(有效图片数 - 17.5) / 30 = 数量调整分
+3. 基础积分 = 1.0 + 数量调整分
 
-**第4步：计算难度调整分**
-- 根据产品难易程度：-0.2到+0.25分
-- **大部分产品应该是-0.15到0分**
+**第4步：评估产品难度**
+1. 分析产品类型、材质、拍摄难度
+2. 确定难度加分（-0.2 到 +0.5）
+3. 隐藏成本加分（造型、道具、材质等，+0.25到+1）
 
-**最终评分** = 0.85分（基准）+ 数量调整 + 难度调整
+**第5步：应用折扣**
+1. 批量/变体折扣（3–8折）
+2. 合规风险调整
 
-## 典型案例（严格参考）
+**第6步：计算最终积分**
+- **最终积分** = (基础积分 + 难度加分) × 折扣系数 + AI图积分
+- 确保最终积分在 0.1–3 分范围内
 
-### 案例1：简单小件
-- **原始**：8张不同角度
-- **备选**：0张
-- **折算**：如有3张以上细节，严格折为5-6张（减少2-3张）
-- **有效**：6张
-- **数量调整**：(6-17.5)/30 = -0.38分
-- **难度**：简单产品 -0.15
-- **评分**：0.85 - 0.38 - 0.15 = **0.32分**
+## 典型案例
 
-### 案例2：标准任务
-- **原始**：17张不同角度 + 1张场景图
-- **备选**：0张
-- **折算**：18张中如有5张细节，严格折为15-16张（减少2-3张）
-- **有效**：15张
-- **数量调整**：(15-17.5)/30 = -0.08分
-- **难度**：1张场景图（正常配置）+0
-- **评分**：0.85 - 0.08 + 0 = **0.77分**
+### 案例1：简单小件（5分钟）
+- **图片**：3张白底不同角度
+- **AI图**：0张
+- **耗时**：约5分钟
+- **基础积分**：0.1分
+- **最终积分**：**0.1分**
 
-### 案例3：带钻笔记本
-- **原始**：13张（不同角度、细节、包装等）
-- **备选**：0张
-- **折算**：13张中等图集，必须严格折算3-4张
-- **有效**：10张
-- **数量调整**：(10-17.5)/30 = -0.25分
-- **难度**：带钻装饰（有一定难度）+0.15
-- **评分**：0.85 - 0.25 + 0.15 = **0.75分**
+### 案例2：标准任务（1小时）
+- **图片**：15张白底 + 2张场景图
+- **AI图**：0张
+- **耗时**：约1小时
+- **基础积分**：1.0分
+- **最终积分**：**1.0分**
 
-### 案例4：普通金属锅
-- **原始**：15张（含5张同产品细节特写）
-- **备选**：0张
-- **折算**：5张细节严格折为2张，减少3张
-- **有效**：12张
-- **数量调整**：(12-17.5)/30 = -0.18分
-- **难度**：普通金属 +0
-- **评分**：0.85 - 0.18 + 0 = **0.67分**
+### 案例3：带AI图任务
+- **图片**：12张白底 + 5张AI合成图
+- **AI图**：5张（文件名含"摄影A图"）
+- **耗时**：约40分钟拍摄
+- **基础积分**：0.75分
+- **AI图积分**：5 × 0.1 = 0.5分
+- **最终积分**：0.75 + 0.5 = **1.25分**
 
-### 案例5：塑料杯子（大量图片）
-- **原始**：47张（含大量同角度重复拍摄）
-- **备选**：0张
-- **折算**：严格折算重复细节，约减少18张
-- **有效**：29张
-- **数量调整**：(29-17.5)/30 = +0.38分
-- **难度**：简单塑料产品 -0.15
-- **评分**：0.85 + 0.38 - 0.15 = **1.08分**
+### 案例4：批量颜色变体
+- **图片**：30张（5个颜色，每个6张同角度）
+- **AI图**：0张
+- **耗时**：约1.5小时（第一个颜色正常拍，其他快速切换）
+- **基础积分**：1.25分
+- **折扣**：颜色变体6折
+- **最终积分**：1.25 × 0.6 = **0.75分**
+
+### 案例5：复杂大礼包
+- **图片**：35张（多件组合）+ 5张精美场景图
+- **AI图**：0张
+- **耗时**：约2小时（组装+造型+拍摄）
+- **基础积分**：1.5分
+- **隐藏成本**：+0.25（复杂组装+道具）
+- **最终积分**：1.5 + 0.25 = **1.75分**
 
 ### 案例6：发光产品
-- **原始**：10张（小图集）
-- **备选**：0张
-- **折算**：如有4张细节严格折为8张（减少2张）
-- **有效**：8张
-- **数量调整**：(8-17.5)/30 = -0.32分
-- **难度**：发光产品（有一定难度）+0.15
-- **评分**：0.85 - 0.32 + 0.15 = **0.68分**
+- **图片**：10张白底 + 2张场景图
+- **AI图**：0张
+- **耗时**：约1.5小时（特殊布光）
+- **基础积分**：1.25分
+- **隐藏成本**：+0.25（发光产品布光）
+- **最终积分**：1.25 + 0.25 = **1.5分**
 
-### 案例7：多款式产品
-- **原始**：20张不同款式 + 2张场景图
-- **备选**：0张
-- **折算**：即使不同款式，如有重复细节也要严格折算4-5张
-- **有效**：17张
-- **数量调整**：(17-17.5)/30 = -0.02，约0
-- **难度**：正常难度 +0
-- **评分**：0.85 + 0 + 0 = **0.85分**
-
-### 案例8：复杂大礼包
-- **原始**：35张（多件组合）+ 3张精美场景图
-- **备选**：0张
-- **折算**：严格折算重复细节，减少7-9张
-- **有效**：29张
-- **数量调整**：(29-17.5)/30 = +0.38分
-- **难度**：较难（大礼包+精美场景）+0.25
-- **评分**：0.85 + 0.38 + 0.25 = **1.48分**
-
-## 关键提醒
-1. **基准分是0.85分**：标准一套图（15-20张有效图）= 0.85分基准
-2. **备选图完全不算**：文件名含"备选"或同角度多拍的未选用图，完全不计入任何统计
-3. **区分三种图集规模，折算规则极其严格（宁可多折不可少折）**：
-   - **小图集（≤10张）**：如有4张以上细节必须严格折算
-   - **中等图集（11-15张）**：最常见配置，必须严格折算3-4张
-   - **大图集（>15张）**：严格折算重复细节，比例更高
-4. **中等图集（11-15张）特别注意**：这是标准配置，必须非常严格折算
-   - 11张必须折2-3张 → 8-9张有效
-   - 13张必须折3-4张 → 9-10张有效
-   - 15张必须折4-5张 → 10-11张有效
-5. **同颜色同角度必须严格折算**：多个颜色拍摄相同角度时，第一个颜色100%，其他颜色30-40%
-6. **数量调整公式**：(有效图片数 - 17.5) / 30 = 数量调整分
-7. **1-2张场景图不加分**：1-2张场景图是正常配置，只有3张以上精美场景图才加分
-8. **带装饰产品适度加分**：带钻石、亮片、复杂图案的产品，加+0.1-0.15分
-9. **大件不自动加分**：仅当需要复杂组装时才加分
-10. **金属不自动加分**：普通金属产品是常规工作
-11. **大部分简单产品应该在0.3-0.7分**：只有真正复杂的产品才接近或超过0.85分
-12. **评分范围参考**（重要！）：
-    - 0.25-0.40分：简单产品、图片很少（<8张）
-    - 0.40-0.65分：简单产品、图片较少（8-12张）
-    - 0.65-1.0分：正常产品、标准图片数（13-20张）
-    - 1.0-1.5分：复杂产品、图片多（>20张）
+## 输出格式（必须严格遵守）
 
 请分析图片后，只返回纯JSON格式：
 {
-    "dimension1_quantity": {
-        "totalImages": 原始图片总数,
-        "backupImages": 备选图片数量（已完全排除），
-        "foldedImages": 折算图片数量（如5张细节折为2张，减少了3张）,
-        "effectiveImages": 有效图片数（排除备选并折算后）,
-        "quantityAdjustment": 基于数量的调整分数（公式：(有效图-17.5)/30）,
-        "imageBreakdown": "图片构成说明（多少张主图、多少张细节图、多少张场景图等）"
-    },
-    "dimension2_difficulty": {
-        "level": "难度等级（简单/正常/有一定难度/较难）",
-        "productType": "产品类型",
-        "difficultyFactors": ["难度因素列表"],
-        "difficultyAdjustment": 难度调整分数（-0.2到+0.25）,
-        "difficultyDescription": "难度评估说明"
-    },
-    "finalScore": {
-        "baseScore": 0.85,
-        "suggestedScore": 最终建议积分（精确到0.05分）,
-        "calculation": "计算过程（如：0.85分（基准）+ 数量调整-0.25 + 难度-0.15 = 0.45分）",
-        "breakdown": "分数构成（0.85分基准 + 数量X + 难度X = 最终X分）"
-    },
-    "sceneImages": 场景图数量,
-    "sceneQuality": "场景图质量(无/简单/常规/精细)",
-    "qualityScore": 图片质量(0-100),
-    "reasoning": "综合评分理由（从图片数量、难度两个维度总结，强调：1.是否排除备选图 2.如何严格折算细节图 3.为什么给出这个难度分数 4.最终为什么是这个分数）"
-}`;
+  "final_points": 最终积分（number，精确到0.05），
+  "points_breakdown": {
+    "shoot_base_points": 拍摄基础积分（number），
+    "difficulty_bonus": 难度加分（number），
+    "ai_points": AI图积分（number），
+    "simple_override_applied": 是否应用简化规则（boolean），
+    "discount_factor": 折扣系数（number，1.0表示无折扣）
+  },
+  "rule_hits": {
+    "time_based": ["耗时相关规则命中列表"],
+    "conversion_based": ["工作量换算规则命中列表"],
+    "ai_based": ["AI图相关规则命中列表"],
+    "bonus_based": ["加分规则命中列表"],
+    "penalty_based": ["减分规则命中列表"],
+    "discount_based": ["折扣规则命中列表"],
+    "compliance_risk": ["合规风险列表"]
+  },
+  "explanation": "综合评分理由（用输入依据解释为什么这样给分/折扣）"
+}
+
+**重要提醒**：
+            loadModel();
+1. 如果输入缺失关键字段（如耗时/变体信息），仍必须给出"保守可解释"的评分，并在 compliance_risk 写明缺失项
+2. AI图必须通过文件名识别（包含"摄影A图"或"开发以确认"）
+3. 每张AI图固定加0.1分
+4. 最终积分必须在0.1–3分范围内
+5. 所有计算必须基于耗时优先原则`;
 
         // 初始化
         document.addEventListener('DOMContentLoaded', () => {
@@ -2159,6 +2202,28 @@
                 // 显示已加载的API Key的前后几位
                 const masked = saved.substring(0, 8) + '...' + saved.substring(saved.length - 4);
                 console.log('已加载保存的API Key:', masked);
+            }
+        }
+
+        // 保存选中的模型
+        function saveModel() {
+            const modelSelect = document.getElementById("modelSelect");
+            selectedModel = modelSelect.value;
+            localStorage.setItem("qwen_model", selectedModel);
+            console.log("已切换模型:", selectedModel);
+            showToast("已切换到 " + modelSelect.options[modelSelect.selectedIndex].text, "success");
+        }
+
+        // 加载保存的模型
+        function loadModel() {
+            const saved = localStorage.getItem("qwen_model");
+            if (saved) {
+                selectedModel = saved;
+                const modelSelect = document.getElementById("modelSelect");
+                if (modelSelect) {
+                    modelSelect.value = saved;
+                    console.log("已加载保存的模型:", saved);
+                }
             }
         }
 
@@ -2707,68 +2772,13 @@
                         <div class="folder-count">${group.files.length} 张图片</div>
                     `;
 
-                    const preview = document.createElement('div');
-                    preview.className = 'folder-preview collapsed';
-                    preview.id = `preview-${folderIndex}`;
-
-                    // 创建文件夹专用的文件映射
-                    group.files.forEach((file, idx) => {
-                        const fileKey = `folder-${folderIndex}-file-${idx}`;
-                        window.lazyLoadFileMap.set(fileKey, file);
-                        globalFileIndex++;
+                    // 合成缩略图，点击打开 lightbox
+                    const capturedFiles = group.files.slice();
+                    const thumb = window.buildFolderThumb(capturedFiles, (idx) => {
+                        window.openLightbox(capturedFiles, idx);
                     });
-
-                    // 显示前3张作为预览，其余懒加载
-                    const previewLimit = 3;
-                    group.files.forEach((file, idx) => {
-                        const itemDiv = document.createElement('div');
-                        itemDiv.className = 'preview-item';
-                        const img = document.createElement('img');
-                        const fileKey = `folder-${folderIndex}-file-${idx}`;
-
-                        if (idx < previewLimit) {
-                            // 前3张直接加载
-                            img.src = URL.createObjectURL(file);
-                        } else {
-                            // 其余使用懒加载
-                            img.setAttribute('data-src', 'lazy');
-                            img.setAttribute('data-file', fileKey);
-                            imageObserver.observe(img);
-                        }
-
-                        itemDiv.appendChild(img);
-                        preview.appendChild(itemDiv);
-                    });
-
                     div.appendChild(header);
-                    div.appendChild(preview);
-
-                    // 如果图片超过6张，添加展开/收起按钮
-                    if (group.files.length > 6) {
-                        const expandBtn = document.createElement('button');
-                        expandBtn.className = 'btn-expand';
-                        expandBtn.textContent = `展开查看全部 ${group.files.length} 张图片 ▼`;
-                        const currentIndex = folderIndex;
-                        expandBtn.onclick = function() {
-                            const previewDiv = document.getElementById(`preview-${currentIndex}`);
-                            const isCollapsed = previewDiv.classList.contains('collapsed');
-
-                            if (isCollapsed) {
-                                previewDiv.classList.remove('collapsed');
-                                expandBtn.textContent = '收起 ▲';
-                                // 展开时触发懒加载
-                                const lazyImages = previewDiv.querySelectorAll('img[data-src]');
-                                lazyImages.forEach(img => {
-                                    if (!imageObserver) initLazyLoadObserver();
-                                    imageObserver.observe(img);
-                                });
-                            } else {
-                                previewDiv.classList.add('collapsed');
-                                expandBtn.textContent = `展开查看全部 ${group.files.length} 张图片 ▼`;
-                            }
-                        };
-                        div.appendChild(expandBtn);
-                    }
+                    div.appendChild(thumb);
 
                     folderGroupsDiv.appendChild(div);
                     folderIndex++;
@@ -3064,7 +3074,7 @@
                 }
 
                 const requestBody = {
-                    model: 'qwen-vl-plus', // 使用plus视觉模型
+                    model: selectedModel, // 使用plus视觉模型
                     messages: [
                         {
                             role: 'user',
@@ -3673,6 +3683,254 @@
             const duration = type === 'warning' ? 5000 : 3000;
             setTimeout(() => toast.classList.remove('show'), duration);
         }
+    </script>
+
+    <!-- Lightbox -->
+    <div class="lightbox-overlay" id="lightboxOverlay">
+        <div class="lightbox-toolbar">
+            <span class="lightbox-counter" id="lightboxCounter"></span>
+            <span class="lightbox-filename" id="lightboxFilename"></span>
+        </div>
+        <button class="lightbox-close" id="lightboxClose">✕</button>
+        <button class="lightbox-nav prev" id="lightboxPrev">‹</button>
+        <div class="lightbox-img-wrap" id="lightboxImgWrap">
+            <img id="lightboxImg" src="" alt="">
+        </div>
+        <button class="lightbox-nav next" id="lightboxNext">›</button>
+    </div>
+
+    <script>
+    (function() {
+        // ── Lightbox state ──
+        let lbFiles = [];
+        let lbIndex = 0;
+        let lbScale = 1;
+        let lbObjUrls = {};  // cache object URLs
+        let isDragging = false, dragStartX = 0, dragStartY = 0, translateX = 0, translateY = 0;
+
+        const overlay  = document.getElementById('lightboxOverlay');
+        const img      = document.getElementById('lightboxImg');
+        const wrap     = document.getElementById('lightboxImgWrap');
+        const counter  = document.getElementById('lightboxCounter');
+        const filename = document.getElementById('lightboxFilename');
+        const btnClose = document.getElementById('lightboxClose');
+        const btnPrev  = document.getElementById('lightboxPrev');
+        const btnNext  = document.getElementById('lightboxNext');
+
+        function getUrl(file) {
+            const key = file.name + file.size;
+            if (!lbObjUrls[key]) lbObjUrls[key] = URL.createObjectURL(file);
+            return lbObjUrls[key];
+        }
+
+        function resetTransform() {
+            lbScale = 1; translateX = 0; translateY = 0;
+            applyTransform();
+        }
+
+        function applyTransform() {
+            img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${lbScale})`;
+        }
+
+        function showImage(index) {
+            lbIndex = Math.max(0, Math.min(index, lbFiles.length - 1));
+            resetTransform();
+            img.src = getUrl(lbFiles[lbIndex]);
+            counter.textContent = `${lbIndex + 1} / ${lbFiles.length}`;
+            filename.textContent = lbFiles[lbIndex].name;
+            btnPrev.style.opacity = lbIndex === 0 ? '0.3' : '1';
+            btnNext.style.opacity = lbIndex === lbFiles.length - 1 ? '0.3' : '1';
+        }
+
+        // 滚轮缩放
+        wrap.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.85 : 1.18;
+            lbScale = Math.min(8, Math.max(0.3, lbScale * delta));
+            applyTransform();
+        }, { passive: false });
+
+        // 拖拽平移
+        wrap.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            isDragging = true;
+            dragStartX = e.clientX - translateX;
+            dragStartY = e.clientY - translateY;
+            wrap.classList.add('grabbing');
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            translateX = e.clientX - dragStartX;
+            translateY = e.clientY - dragStartY;
+            applyTransform();
+        });
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            wrap.classList.remove('grabbing');
+        });
+
+        // 双击重置
+        wrap.addEventListener('dblclick', resetTransform);
+
+        // 导航
+        btnPrev.addEventListener('click', () => showImage(lbIndex - 1));
+        btnNext.addEventListener('click', () => showImage(lbIndex + 1));
+
+        // 关闭
+        btnClose.addEventListener('click', closeLightbox);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeLightbox();
+        });
+
+        // 键盘
+        document.addEventListener('keydown', (e) => {
+            if (!overlay.classList.contains('active')) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') showImage(lbIndex - 1);
+            if (e.key === 'ArrowRight') showImage(lbIndex + 1);
+        });
+
+        function closeLightbox() {
+            overlay.classList.remove('active');
+            img.src = '';
+            btnPrev.style.display = '';
+            btnNext.style.display = '';
+        }
+
+        // 公开接口
+        window.openLightbox = function(files, startIndex) {
+            lbFiles = Array.from(files);
+            overlay.classList.add('active');
+            showImage(startIndex || 0);
+        };
+
+        // 直接显示一张图片（dataURL 或 URL）
+        window.openLightboxImage = function(src) {
+            overlay.classList.add('active');
+            resetTransform();
+            img.src = src;
+            counter.textContent = '';
+            filename.textContent = '';
+            btnPrev.style.display = 'none';
+            btnNext.style.display = 'none';
+        };
+
+        // ── 合成缩略图 ──
+        window.buildFolderThumb = function(files, onImageClick) {
+            const container = document.createElement('div');
+            container.style.cssText = 'width:100%;margin-top:8px;';
+
+            const cols = Math.min(files.length, 6);
+            const canvasCellW = 220;  // 固定宽度
+            const labelH = 22;
+            const canvasPad = 4;
+
+            // 先加载所有图片获取尺寸，然后计算布局
+            const imagePromises = files.map(file => {
+                return new Promise(resolve => {
+                    const img = new Image();
+                    const url = URL.createObjectURL(file);
+                    img.onload = () => {
+                        const aspectRatio = img.width / img.height;
+                        const displayH = Math.round(canvasCellW / aspectRatio);
+                        resolve({ file, img, url, displayH, aspectRatio });
+                        URL.revokeObjectURL(url);
+                    };
+                    img.onerror = () => resolve({ file, img: null, url, displayH: 200, aspectRatio: 1 });
+                    img.src = url;
+                });
+            });
+
+            Promise.all(imagePromises).then(imageData => {
+                // 计算每行的高度（取该行最高的图）
+                const rows = Math.ceil(files.length / cols);
+                const rowHeights = [];
+                for (let r = 0; r < rows; r++) {
+                    let maxH = 0;
+                    for (let c = 0; c < cols; c++) {
+                        const idx = r * cols + c;
+                        if (idx < imageData.length) {
+                            maxH = Math.max(maxH, imageData[idx].displayH);
+                        }
+                    }
+                    rowHeights.push(maxH);
+                }
+
+                // 计算 canvas 总高度
+                const canvasW = cols * canvasCellW + (cols - 1) * canvasPad;
+                const canvasH = rowHeights.reduce((sum, h) => sum + h + labelH, 0) + (rows - 1) * canvasPad;
+
+                const canvas = document.createElement('canvas');
+                canvas.width = canvasW;
+                canvas.height = canvasH;
+                canvas.style.cssText = 'width:100%;height:auto;display:block;border-radius:6px;cursor:pointer;';
+                container.appendChild(canvas);
+
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#f5f5f5';
+                ctx.fillRect(0, 0, canvasW, canvasH);
+
+                // 绘制每张图
+                let currentY = 0;
+                for (let r = 0; r < rows; r++) {
+                    const rowH = rowHeights[r];
+                    for (let c = 0; c < cols; c++) {
+                        const idx = r * cols + c;
+                        if (idx >= imageData.length) break;
+
+                        const { file, img, displayH } = imageData[idx];
+                        const x = c * (canvasCellW + canvasPad);
+                        const y = currentY;
+
+                        // 白色背景
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(x, y, canvasCellW, rowH);
+
+                        if (img) {
+                            // 图片居中显示（按原比例）
+                            const w = canvasCellW;
+                            const h = displayH;
+                            const dy = y + (rowH - h) / 2;
+                            ctx.drawImage(img, x, dy, w, h);
+                        } else {
+                            // 加载失败占位
+                            ctx.fillStyle = '#e8e8e8';
+                            ctx.fillRect(x, y, canvasCellW, rowH);
+                            ctx.fillStyle = '#bbb';
+                            ctx.font = '13px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(`#${idx + 1}`, x + canvasCellW / 2, y + rowH / 2 + 5);
+                        }
+
+                        // Label background
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(x, y + rowH, canvasCellW, labelH);
+
+                        // Label text
+                        const name = file.name.replace(/\.[^.]+$/, '');
+                        ctx.fillStyle = '#333';
+                        ctx.font = '11px sans-serif';
+                        ctx.textAlign = 'center';
+                        let label = name;
+                        while (ctx.measureText(label).width > canvasCellW - 8 && label.length > 4) {
+                            label = label.slice(0, -1);
+                        }
+                        if (label !== name) label += '…';
+                        ctx.fillText(label, x + canvasCellW / 2, y + rowH + labelH - 5);
+                    }
+                    currentY += rowH + labelH + canvasPad;
+                }
+
+                // Click: open lightbox showing the full combined canvas
+                canvas.addEventListener('click', () => {
+                    const dataUrl = canvas.toDataURL('image/png');
+                    window.openLightboxImage(dataUrl);
+                });
+            });
+
+            return container;
+        };
+    })();
     </script>
 </body>
 </html>
