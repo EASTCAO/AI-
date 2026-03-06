@@ -1,16 +1,22 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const path = require('path');
 const app = express();
 
 // 中间件
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static('.')); // 提供静态文件服务
+app.use(express.static(path.join(__dirname))); // 提供静态文件服务
 
 // 健康检查
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: '服务运行正常' });
+});
+
+// 根路由 - 返回主页
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index_standalone.html'));
 });
 
 // 代理通义千问 API
