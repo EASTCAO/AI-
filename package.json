@@ -1,0 +1,20 @@
+{
+  "name": "ai-scoring-system",
+  "version": "1.0.0",
+  "description": "AI绩效打分系统",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["ai", "scoring", "qwen"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

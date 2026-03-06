@@ -1973,7 +1973,7 @@
         </div>
 
         <!-- API设置 -->
-        <section class="api-card" id="apiCard">
+        <section class="api-card" id="apiCard" style="display: none;">
             <h2>🔑 设置通义千问 API Key</h2>
             <p>
                 新用户赠送 <strong>100万tokens免费额度</strong>（约5000次调用）·
@@ -3451,12 +3451,11 @@
                 };
 
                 const response = await fetch(
-                    'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+                    '/api/qwen',
                     {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${geminiApiKey}`
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify(requestBody)
                     }

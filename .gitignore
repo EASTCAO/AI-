@@ -31,9 +31,14 @@ desktop.ini
 *.bak
 *.log
 
-# Node modules（如果将来需要）
+# Node modules
 node_modules/
 package-lock.json
+
+# 环境变量（包含敏感信息）
+.env
+.env.local
+.env.*.local
 
 # 用户数据和缓存
 .cache/
