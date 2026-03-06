@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const axios = require('axios');
 const app = express();
 
 // 中间件
@@ -23,24 +24,26 @@ app.post('/api/qwen', async (req, res) => {
             });
         }
 
-        const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify(req.body)
-        });
+        console.log('📤 发送请求到通义千问 API...');
 
-        const data = await response.json();
+        const response = await axios.post(
+            'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+            req.body,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            }
+        );
 
-        if (!response.ok) {
-            return res.status(response.status).json(data);
-        }
-
-        res.json(data);
+        console.log('✅ API 响应成功');
+        res.json(response.data);
     } catch (error) {
-        console.error('API 调用失败:', error);
+        console.error('❌ API 调用失败:', error.message);
+        if (error.response) {
+            return res.status(error.response.status).json(error.response.data);
+        }
         res.status(500).json({
             error: '服务器错误: ' + error.message
         });
