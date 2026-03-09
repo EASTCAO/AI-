@@ -3455,7 +3455,7 @@
                 }
 
                 const requestBody = {
-                    model: selectedModel, // 使用plus视觉模型
+                    model: selectedModel,
                     messages: [
                         {
                             role: 'user',
@@ -3463,7 +3463,8 @@
                         }
                     ],
                     temperature: 0.1,
-                    max_tokens: 2048
+                    max_tokens: 4096,
+                    enable_thinking: false  // 关闭思考模式，避免qwen3.5-plus推理过慢/超token
                 };
 
                 // 判断运行模式：file:// 协议为 standalone，否则通过后端代理
