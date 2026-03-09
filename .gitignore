@@ -6,6 +6,10 @@
 image.*
 screenshot.*
 
+# 无标题临时文件
+Untitled
+*.html.html
+
 # 参考文件夹（包含大型文档）
 参考文件/
 *.xlsx

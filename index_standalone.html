@@ -1965,9 +1965,9 @@
                 <div class="setting-section">
                     <label>AI模型</label>
                     <select id="modelSelectModal" onchange="saveModelFromModal()">
-                        <option value="qwen3.5-plus">Qwen 3.5 Plus (推荐)</option>
+                        <option value="qwen3.5-plus">Qwen3.5 Plus (推荐)</option>
+                        <option value="qwen-vl-plus">Qwen VL Plus (速度快)</option>
                         <option value="qwen-vl-max">Qwen VL Max (高精度)</option>
-                        <option value="qwen-vl-plus">Qwen VL Plus (平衡)</option>
                     </select>
                     <p class="setting-hint">
                         不同模型在准确度和速度上有所差异
@@ -2065,7 +2065,7 @@
                         • <strong>辅助参考</strong>：产品难度仅作参考，不直接加分<br>
                         • <strong>折叠规则</strong>：同角度微调3-5张折算为1张；场景图1张≈3张白底图<br>
                         • <strong>批量折扣</strong>：颜色变体5-8折，系列产品3-8折<br>
-                        • <strong>AI合成图</strong>：文件名含"摄影A图"或"开发以确认"，每张+0.1分
+                        • <strong>AI合成图</strong>：文件名格式为"编号-摄影A图-开发以确认"（同时含这两段），每张+0.1分
                     </div>
                     <div>
                         <strong>💡 打分要点：</strong><br>
@@ -2300,7 +2300,7 @@
         let folderGroups = {}; // 按文件夹分组 { folderPath: { files: [], filesData: [] } }
         let isFolderMode = false; // 是否为文件夹模式
         let currentResult = null;
-        let selectedModel = "qwen3.5-plus"; // 默认使用Qwen 3.5 Plus
+        let selectedModel = "qwen3.5-plus"; // 默认使用 Qwen3.5 Plus
         let records = [];
         let geminiApiKey = null;
 
@@ -2323,7 +2323,7 @@
 - **场景图**：1张 ≈ 3张不同角度白底图用时
 
 ### 4. AI合成图计分（重要！）
-- **AI图识别**：文件名包含"摄影A图"或"开发以确认"的图片
+- **AI图识别**：文件名**同时包含**"摄影A图"**和**"开发以确认"的图片（格式：编号-摄影A图-开发以确认）
 - **计分标准**：每张AI图加 0.1 分
 - **雷同变体**：同画面元素70%以上雷同、仅微调提示词的变体，按更低档计，不重复高额给分
 - **常规默认**：0.2分/张（如果质量特别高）
@@ -2361,7 +2361,7 @@
 ## 评分计算流程
 
 **第1步：识别AI图**
-1. 检查文件名是否包含"摄影A图"或"开发以确认"
+1. 检查文件名是否**同时包含**"摄影A图"**和**"开发以确认"（格式：编号-摄影A图-开发以确认）
 2. 统计AI图数量
 3. AI图积分 = AI图数量 × 0.1
 
@@ -2408,7 +2408,7 @@
 
 ### 案例3：带AI图任务
 - **图片**：12张白底 + 5张AI合成图
-- **AI图**：5张（文件名含"摄影A图"）
+- **AI图**：5张（文件名格式：编号-摄影A图-开发以确认）
 - **耗时**：约40分钟拍摄
 - **基础积分**：0.75分
 - **AI图积分**：5 × 0.1 = 0.5分
@@ -2465,7 +2465,7 @@
 **重要提醒**：
             loadModel();
 1. 如果输入缺失关键字段（如耗时/变体信息），仍必须给出"保守可解释"的评分，并在 compliance_risk 写明缺失项
-2. AI图必须通过文件名识别（包含"摄影A图"或"开发以确认"）
+2. AI图必须通过文件名识别（同时包含"摄影A图"和"开发以确认"，格式：编号-摄影A图-开发以确认）
 3. 每张AI图固定加0.1分
 4. 最终积分必须在0.1–3分范围内
 5. 所有计算必须基于耗时优先原则`;
@@ -2493,7 +2493,14 @@
 
         // 加载保存的模型
         function loadModel() {
-            const saved = localStorage.getItem("qwen_model");
+            const VALID_MODELS = ['qwen3.5-plus', 'qwen-vl-plus', 'qwen-vl-max'];
+            let saved = localStorage.getItem("qwen_model");
+            // 旧的无效模型 ID 自动重置
+            if (saved && !VALID_MODELS.includes(saved)) {
+                console.warn(`模型 "${saved}" 不是有效的视觉模型，已重置为 qwen3.5-plus`);
+                saved = 'qwen3.5-plus';
+                localStorage.setItem("qwen_model", saved);
+            }
             if (saved) {
                 selectedModel = saved;
                 // 同步到模态框选择器
@@ -2971,6 +2978,7 @@
                                 resolve({
                                     mimeType: file.type,
                                     data: base64,
+                                    fileName: file.name,
                                     originalSize: file.size,
                                     compressed: false
                                 });
@@ -3016,6 +3024,7 @@
                                         resolve({
                                             mimeType: blob.type,
                                             data: base64,
+                                            fileName: file.name,
                                             originalSize: file.size,
                                             compressedSize: blob.size,
                                             compressed: true
@@ -3424,10 +3433,13 @@
                 console.log(`正在分析 ${maxImages} 张图片（共${filesData.length}张）${folderName ? ` - ${folderName}` : ''}`);
 
                 // 构建消息内容 - 使用OpenAI兼容格式
+                const fileNameList = filesData.slice(0, maxImages)
+                    .map((f, i) => `${i + 1}. ${f.fileName || '未知'}`)
+                    .join('\n');
                 const messageContent = [
                     {
                         type: 'text',
-                        text: `${SCORING_PROMPT}\n\n这是一套产品拍摄图片，共${totalCount}张。请分析这些图片并给出评分。${totalCount > maxImages ? `（由于数量较多，我只展示了前${maxImages}张作为样本）` : ''}`
+                        text: `${SCORING_PROMPT}\n\n这是一套产品拍摄图片，共${totalCount}张。${totalCount > maxImages ? `（由于数量较多，我只展示了前${maxImages}张作为样本）` : ''}\n\n文件名列表（按顺序对应下方图片）：\n${fileNameList}\n\n请分析这些图片并给出评分。`
                     }
                 ];
 
@@ -3454,13 +3466,19 @@
                     max_tokens: 2048
                 };
 
+                // 判断运行模式：file:// 协议为 standalone，否则通过后端代理
+                const isStandalone = window.location.protocol === 'file:';
+                const apiEndpoint = isStandalone
+                    ? 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+                    : '/api/qwen';
+                const apiHeaders = { 'Content-Type': 'application/json' };
+                if (isStandalone) apiHeaders['Authorization'] = `Bearer ${geminiApiKey}`;
+
                 const response = await fetch(
-                    '/api/qwen',
+                    apiEndpoint,
                     {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: apiHeaders,
                         body: JSON.stringify(requestBody)
                     }
                 );

@@ -10,14 +10,29 @@ This is an **AI-powered product photography scoring system** built as a standalo
 
 ## How to Run
 
-### Development/Testing
+### Mode 1: Standalone (no backend)
 ```bash
-# Open directly in browser
+# Open directly in browser (API key stored in localStorage)
 start index_standalone.html
 
 # Or use the provided launcher
 打开通义千问版.bat
 ```
+
+### Mode 2: Node.js Backend Server
+```bash
+# Install dependencies
+npm install
+
+# Create .env from example and add your API key
+cp .env.example .env
+
+# Start server (runs on port 3000)
+npm start
+# Then open http://localhost:3000
+```
+
+The backend (`server.js`) is an Express proxy that stores the `QWEN_API_KEY` env var server-side, hiding it from the browser. It serves `index_standalone.html` as a static file and proxies API calls via `POST /api/qwen`. This mode is used for Zeabur cloud deployment (see `DEPLOY.md`).
 
 The system requires:
 1. A Qwen API key from Alibaba Cloud (https://bailian.console.aliyun.com/#/api-key)
@@ -289,3 +304,20 @@ Requires modern browser features:
 - IntersectionObserver API for lazy loading
 - ES6+ JavaScript (arrow functions, template literals, etc.)
 - Fetch API for network requests
+
+### Updating Version Numbers
+When bumping the version, update **3 locations** in `index_standalone.html`:
+1. `<title>` tag (line ~6)
+2. `<span class="version-badge">` in the header (line ~1467)
+3. `<span class="version-number">` and update date in the footer (line ~1760-1762)
+
+Also update `CHANGELOG.md` with the new version entry.
+
+### Git Commit Conventions
+```
+feat: 添加XX功能
+fix: 修复XX问题
+docs: 更新XX文档
+style: 优化XX样式
+perf: 优化XX性能
+```
