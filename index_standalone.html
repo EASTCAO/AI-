@@ -3306,6 +3306,68 @@
             }
         }
 
+        // 从文件夹名提取产品名（去掉括号信息和变体词，用于变体分组）
+        function extractProductName(folderName) {
+            let name = folderName;
+            // 去掉括号及括号内内容（如"（C-曹东-01.04）"）
+            name = name.replace(/[（(][^）)]*[）)]/g, '');
+            // 去掉开头的编号和摄影师信息（如"J3-余梦芊-CLO2775-"前缀部分）
+            // 格式：字母数字-人名-SKU-产品名 → 取最后一段作为产品名
+            const parts = name.replace(/_/g, '-').split('-');
+            // 过滤掉纯编号段（如J3、J15）和SKU段（大写字母+数字）
+            const productParts = parts.filter(p => {
+                const cleaned = p.trim();
+                if (!cleaned) return false;
+                // 排除：编号段（J3、J15等）
+                if (/^[A-Za-z]\d+$/.test(cleaned)) return false;
+                // 排除：SKU编号（3个以上大写字母+数字组合）
+                if (/^[A-Z]{2,}\d+/.test(cleaned)) return false;
+                // 排除：纯数字日期段（01.04、1.4等）
+                if (/^\d+\.\d+$/.test(cleaned)) return false;
+                return true;
+            });
+            // 取最后一个有意义的段作为产品名
+            let productName = productParts.length > 0 ? productParts[productParts.length - 1] : name;
+            // 去掉末尾的颜色/尺寸变体词（红色、蓝色、A款、大号等）
+            productName = productName
+                .replace(/[（(][^）)]*[）)]/g, '')
+                .replace(/(红|蓝|黑|白|绿|黄|紫|粉|橙|灰|金|银|棕|青)(色)?$/u, '')
+                .replace(/([A-Z]款|大号|中号|小号|加大|加厚|套装|\d+件套)$/u, '')
+                .trim();
+            return productName || folderName;
+        }
+
+        // 自动检测变体组：返回 Map<folderPath, { groupKey, position }>
+        // position: 0=第一套(100%), 1=第二套(70%), 2=第三套(60%), 3+=其余(50%)
+        function detectVariantGroups(folderGroups) {
+            const VARIANT_DISCOUNTS = [1.0, 0.7, 0.6, 0.5]; // 第1/2/3/4+套折扣率
+            const groups = {}; // groupKey → [folderPath, ...]
+            const result = new Map();
+
+            for (const folderPath in folderGroups) {
+                const group = folderGroups[folderPath];
+                const productName = extractProductName(group.name);
+                if (!groups[productName]) groups[productName] = [];
+                groups[productName].push(folderPath);
+            }
+
+            for (const productName in groups) {
+                const paths = groups[productName];
+                paths.forEach((folderPath, idx) => {
+                    const position = Math.min(idx, VARIANT_DISCOUNTS.length - 1);
+                    result.set(folderPath, {
+                        groupKey: productName,
+                        groupTotal: paths.length,
+                        position: idx,
+                        discountRate: VARIANT_DISCOUNTS[position],
+                        isVariant: paths.length > 1
+                    });
+                });
+            }
+
+            return result;
+        }
+
         // 批量评分文件夹
         async function analyzeFolders() {
             const btn = document.getElementById('analyzeBtn');
@@ -3315,9 +3377,11 @@
 
             const folderPaths = Object.keys(folderGroups);
 
-            // 检测是否是批量变体
-            let isVariant = false;
-            let discountRate = 1.0;
+            // 自动检测变体组
+            const variantMap = detectVariantGroups(folderGroups);
+            const variantGroupCount = new Set(
+                [...variantMap.values()].filter(v => v.isVariant).map(v => v.groupKey)
+            ).size;
 
             btn.disabled = true;
             btn.innerHTML = '<div class="spinner"></div><span>批量分析中...</span>';
@@ -3325,10 +3389,17 @@
 
             const results = [];
 
+            // 提示检测到的变体组
+            if (variantGroupCount > 0) {
+                showToast(`🔍 自动检测到 ${variantGroupCount} 组同类产品，将按梯度折扣计分（第1套100%→第2套70%→第3套60%→第4套起50%）`, 'info');
+                await new Promise(resolve => setTimeout(resolve, 1200));
+            }
+
             try {
                 for (let i = 0; i < folderPaths.length; i++) {
                     const folderPath = folderPaths[i];
                     const group = folderGroups[folderPath];
+                    const variantInfo = variantMap.get(folderPath) || { isVariant: false, discountRate: 1.0, position: 0 };
 
                     loadingText.textContent = `正在分析第 ${i + 1}/${folderPaths.length} 个任务`;
                     loadingSubtext.textContent = '正在欣赏摄影师的作品...';
@@ -3340,10 +3411,10 @@
                             // 计算基础分数
                             const baseScore = result.finalScore?.suggestedScore || result.suggestedScore || 0;
 
-                            // 如果是变体，应用折扣
+                            // 按变体位置应用梯度折扣
                             let finalScore = baseScore;
-                            if (isVariant) {
-                                finalScore = baseScore * discountRate;
+                            if (variantInfo.isVariant && variantInfo.discountRate < 1.0) {
+                                finalScore = baseScore * variantInfo.discountRate;
                                 finalScore = Math.round(finalScore * 20) / 20; // 四舍五入到0.05
                             }
 
@@ -3355,8 +3426,10 @@
                                 result: result,
                                 baseScore: baseScore,
                                 finalScore: finalScore,
-                                isVariant: isVariant,
-                                discountRate: discountRate
+                                isVariant: variantInfo.isVariant,
+                                discountRate: variantInfo.discountRate,
+                                variantPosition: variantInfo.position + 1, // 1-based显示
+                                variantGroupTotal: variantInfo.groupTotal
                             });
                         }
                     } catch (folderError) {
@@ -3387,8 +3460,8 @@
                 displayBatchResults(results);
 
                 let successMsg = `批量评分完成！共评分 ${results.length} 个文件夹`;
-                if (isVariant) {
-                    successMsg += `\n已应用${(discountRate * 100).toFixed(0)}%折扣`;
+                if (variantGroupCount > 0) {
+                    successMsg += `，检测到 ${variantGroupCount} 组同类变体并已自动折扣`;
                 }
                 showToast(successMsg, 'success');
 
@@ -3731,9 +3804,10 @@
             const totalScore = results.reduce((sum, r) => sum + r.finalScore, 0);
             const photographerCount = Object.keys(photographerStats).length;
 
-            // 检测是否有折扣
-            const hasDiscount = results.some(r => r.isVariant);
-            const discountRate = hasDiscount ? results[0].discountRate : 1.0;
+            // 检测是否有自动变体折扣
+            const hasDiscount = results.some(r => r.isVariant && r.discountRate < 1.0);
+            const variantGroupKeys = new Set(results.filter(r => r.isVariant).map(r => r.folderName ? extractProductName(r.folderName) : ''));
+            const variantGroupCountDisplay = variantGroupKeys.size;
 
             // 隐藏标题卡片和AI分析框（批量评分时不显示）
             document.querySelector('.result-title-card').style.display = 'none';
@@ -3747,7 +3821,7 @@
             let summaryHtml = `
                 <div style="background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border: 2px solid #7dd3fc; border-radius: var(--radius); padding: 20px 24px; margin-bottom: 16px; box-shadow: var(--shadow-sm);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h4 style="font-size: 16px; font-weight: 700; color: #0c4a6e; margin: 0;">📊 批量评分汇总${hasDiscount ? ` （已应用${(discountRate * 100).toFixed(0)}%折扣）` : ''}</h4>
+                        <h4 style="font-size: 16px; font-weight: 700; color: #0c4a6e; margin: 0;">📊 批量评分汇总${hasDiscount ? `（自动识别 ${variantGroupCountDisplay} 组变体，梯度折扣）` : ''}</h4>
                         <div style="font-size: 32px; font-weight: 800; color: var(--primary); text-shadow: 0 2px 4px rgba(91, 127, 255, 0.15);">${totalScore.toFixed(2)} 分</div>
                     </div>
                     <div style="font-size: 13px; color: #075985;">
@@ -3765,13 +3839,14 @@
                     // 显示折扣信息
                     let scoreDisplay = '';
                     if (item.isVariant && item.discountRate < 1.0) {
+                        const posLabel = ['第1套', '第2套', '第3套', '第4套'][Math.min((item.variantPosition || 1) - 1, 3)];
                         scoreDisplay = `
                             <div style="text-align: right;">
                                 <div style="font-size: 24px; font-weight: 800; color: var(--success); text-shadow: 0 2px 4px rgba(16, 185, 129, 0.15);">
                                     ${item.finalScore.toFixed(2)} 分
                                 </div>
                                 <div style="font-size: 12px; color: var(--text-light); margin-top: 4px;">
-                                    原${item.baseScore.toFixed(2)} × ${(item.discountRate * 100).toFixed(0)}%
+                                    ${posLabel} 原${item.baseScore.toFixed(2)} × ${(item.discountRate * 100).toFixed(0)}%
                                 </div>
                             </div>
                         `;
@@ -3834,7 +3909,7 @@
                         variantCount: 1,
                         variantType: item.isVariant ? 'batch' : 'single',
                         discountRate: item.discountRate,
-                        discountReason: item.isVariant ? `批量变体${(item.discountRate * 100).toFixed(0)}%折扣` : '',
+                        discountReason: item.isVariant && item.discountRate < 1.0 ? `同类变体第${item.variantPosition || 1}套 ${(item.discountRate * 100).toFixed(0)}%折扣` : '',
                         details: r
                     };
 
