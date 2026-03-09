@@ -3332,30 +3332,48 @@
                     loadingText.textContent = `正在分析第 ${i + 1}/${folderPaths.length} 个任务`;
                     loadingSubtext.textContent = '正在欣赏摄影师的作品...';
 
-                    const result = await analyzeSingleSet(group.filesData, group.files.length, group.name);
+                    try {
+                        const result = await analyzeSingleSet(group.filesData, group.files.length, group.name);
 
-                    if (result) {
-                        // 计算基础分数
-                        const baseScore = result.finalScore?.suggestedScore || result.suggestedScore || 0;
+                        if (result) {
+                            // 计算基础分数
+                            const baseScore = result.finalScore?.suggestedScore || result.suggestedScore || 0;
 
-                        // 如果是变体，应用折扣
-                        let finalScore = baseScore;
-                        if (isVariant) {
-                            finalScore = baseScore * discountRate;
-                            finalScore = Math.round(finalScore * 20) / 20; // 四舍五入到0.05
+                            // 如果是变体，应用折扣
+                            let finalScore = baseScore;
+                            if (isVariant) {
+                                finalScore = baseScore * discountRate;
+                                finalScore = Math.round(finalScore * 20) / 20; // 四舍五入到0.05
+                            }
+
+                            results.push({
+                                folderName: group.name,
+                                folderPath: group.fullPath,
+                                photographer: group.photographer,
+                                taskName: group.taskName,
+                                result: result,
+                                baseScore: baseScore,
+                                finalScore: finalScore,
+                                isVariant: isVariant,
+                                discountRate: discountRate
+                            });
                         }
-
+                    } catch (folderError) {
+                        // 单个文件夹失败不影响其他文件夹
+                        console.error(`文件夹 ${group.name} 分析失败:`, folderError);
                         results.push({
                             folderName: group.name,
                             folderPath: group.fullPath,
                             photographer: group.photographer,
                             taskName: group.taskName,
-                            result: result,
-                            baseScore: baseScore,
-                            finalScore: finalScore,
-                            isVariant: isVariant,
-                            discountRate: discountRate
+                            result: null,
+                            error: folderError.message,
+                            baseScore: 0,
+                            finalScore: 0,
+                            isVariant: false,
+                            discountRate: 1.0
                         });
+                        showToast(`${group.name} 分析失败: ${folderError.message}`, 'warning');
                     }
 
                     // 添加延迟避免API频率限制
@@ -3443,9 +3461,9 @@
                 const apiHeaders = { 'Content-Type': 'application/json' };
                 if (isStandalone) apiHeaders['Authorization'] = `Bearer ${geminiApiKey}`;
 
-                // 60秒超时，防止卡死
+                // 60秒超时，防止卡死（批量模式下单个文件夹）
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 60000);
+                const timeoutId = setTimeout(() => controller.abort(), 120000);
 
                 let response;
                 try {
@@ -3457,7 +3475,7 @@
                     });
                 } catch (fetchErr) {
                     if (fetchErr.name === 'AbortError') {
-                        throw new Error('❌ 请求超时（60秒），请检查网络或减少图片数量后重试');
+                        throw new Error('❌ 请求超时（120秒），请检查网络或减少图片数量后重试');
                     }
                     throw fetchErr;
                 } finally {
