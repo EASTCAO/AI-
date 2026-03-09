@@ -1965,9 +1965,9 @@
                 <div class="setting-section">
                     <label>AI模型</label>
                     <select id="modelSelectModal" onchange="saveModelFromModal()">
-                        <option value="qwen3-vl-plus">Qwen3 VL Plus (推荐，视觉专用)</option>
-                        <option value="qwen-vl-plus">Qwen VL Plus (速度快)</option>
+                        <option value="qwen-vl-plus">Qwen VL Plus (推荐，速度快)</option>
                         <option value="qwen-vl-max">Qwen VL Max (高精度)</option>
+                        <option value="qwen3-vl-plus">Qwen3 VL Plus (新一代)</option>
                     </select>
                     <p class="setting-hint">
                         不同模型在准确度和速度上有所差异
@@ -2300,7 +2300,7 @@
         let folderGroups = {}; // 按文件夹分组 { folderPath: { files: [], filesData: [] } }
         let isFolderMode = false; // 是否为文件夹模式
         let currentResult = null;
-        let selectedModel = "qwen3-vl-plus"; // 默认使用 Qwen3 VL Plus（视觉专用）
+        let selectedModel = "qwen-vl-plus"; // 默认使用 Qwen VL Plus（速度最快）
         let records = [];
         let geminiApiKey = null;
 
@@ -2497,8 +2497,8 @@
             let saved = localStorage.getItem("qwen_model");
             // 旧的无效模型 ID 自动重置
             if (saved && !VALID_MODELS.includes(saved)) {
-                console.warn(`模型 "${saved}" 不是有效的视觉模型，已重置为 qwen3-vl-plus`);
-                saved = 'qwen3-vl-plus';
+                console.warn(`模型 "${saved}" 不是有效的视觉模型，已重置为 qwen-vl-plus`);
+                saved = 'qwen-vl-plus';
                 localStorage.setItem("qwen_model", saved);
             }
             if (saved) {
@@ -2617,7 +2617,7 @@
             }
 
             // 同步模型选择
-            const savedModel = localStorage.getItem('qwen_model') || 'qwen3-vl-plus';
+            const savedModel = localStorage.getItem('qwen_model') || 'qwen-vl-plus';
             document.getElementById('modelSelectModal').value = savedModel;
         }
 
@@ -3448,9 +3448,7 @@
                         }
                     ],
                     temperature: 0.1,
-                    max_tokens: 4096,
-                    // qwen3系列直接在顶层传 enable_thinking，关闭思考模式
-                    ...(selectedModel.startsWith('qwen3') && { enable_thinking: false })
+                    max_tokens: 2048
                 };
 
                 // 判断运行模式：file:// 协议为 standalone，否则通过后端代理
