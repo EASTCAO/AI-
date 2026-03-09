@@ -2347,7 +2347,7 @@
 - 注：耗时预估和产品难度作为辅助参考
 
 ### 7. 批量/变体折扣
-- **判断依据**：产品名称相同 = 变体；开发/摄影师名相同不代表是变体；需结合文件名和图片内容综合判断
+- **判断依据**：①产品名称相同（最主要）②SKU编号相近（辅助参考）③图片内容为同类型产品（辅助参考）；开发/摄影师名相同不代表是变体
 - **梯度折扣**：第1套100% → 第2套9折 → 第3套8折 → 第4套7折 → 第5套6折 → 第6套起5折
 - **颜色变体**：同款不同颜色，按上述梯度折扣执行
 - **质量原则**：同样用时质量好少打折，质量低多打折
@@ -3306,32 +3306,41 @@
             }
         }
 
-        // 从文件夹名提取变体分组键
-        // 唯一规则：括号后有产品名（≥3字）→ 用产品名分组
-        //   例：J3-余梦芊-CLO2775（C-曹东-01.04）无动力风帽 → '无动力风帽'
-        //   例：HAP1613（无括号）→ null，不参与归组
-        // SKU相似、摄影师相同均不单独触发变体归组
+        // 从文件夹名提取变体分组键，优先级：产品名 > SKU前缀
+        // 规则1：括号后产品名 ≥ 2字 → 按产品名归组（主要判断依据）
+        //   例：J3-曹东-CLO2775（C-曹东-01.04）无动力风帽 → '无动力风帽'
+        //   例：HAP1613（C-曹东-01.04）门板 → '门板'
+        // 规则2：无有效产品名但有SKU字母前缀（≥3字母）→ 按前缀归组（辅助）
+        //   例：HAP1608、HAP1610、HAP1613 → 均归入 'SKU:HAP'
+        // 摄影师/开发名相同 → 不触发归组
         function extractGroupKey(folderName) {
+            // 规则1：括号后产品名（≥2字）
             const afterBracket = folderName.match(/[）)]\s*(.+)$/);
-            if (!afterBracket) return null;
+            if (afterBracket) {
+                let productName = afterBracket[1].trim();
+                if (productName.length >= 2) {
+                    productName = productName
+                        .replace(/[（(][^）)]*[）)]/g, '')
+                        .replace(/(红|蓝|黑|白|绿|黄|紫|粉|橙|灰|金|银|棕|青)(色)?$/u, '')
+                        .replace(/([A-Z]款|大号|中号|小号|加大|加厚)$/u, '')
+                        .trim();
+                    if (productName.length >= 2) return productName;
+                }
+            }
 
-            let productName = afterBracket[1].trim();
-            if (productName.length < 3) return null;
+            // 规则2：无括号/产品名太短时，提取SKU字母前缀（≥3个大写字母）作为辅助
+            const skuMatch = folderName.match(/([A-Z]{3,})\d+/);
+            if (skuMatch) return `SKU:${skuMatch[1]}`;
 
-            productName = productName
-                .replace(/[（(][^）)]*[）)]/g, '')
-                .replace(/(红|蓝|黑|白|绿|黄|紫|粉|橙|灰|金|银|棕|青)(色)?$/u, '')
-                .replace(/([A-Z]款|大号|中号|小号|加大|加厚)$/u, '')
-                .trim();
-
-            return productName.length >= 3 ? productName : null;
+            return null;
         }
 
         // 自动检测变体组：返回 Map<folderPath, { groupKey, position, discountRate, isVariant }>
-        // 判断依据：
-        //   · 括号后产品名相同 → 变体（最强信号）
-        //   · 无括号但SKU字母前缀相同（≥3字母，如HAP/CLO/DAG）→ 变体
-        //   · 开发/摄影师名相同 → 不算变体
+        // 判断依据（综合）：
+        //   · 括号后产品名相同（≥2字）→ 变体（主要）
+        //   · SKU字母前缀相同（≥3字母，如HAP/CLO）→ 变体（辅助）
+        //   · AI分析图片同类型产品 → 变体（Prompt中告知AI）
+        //   · 摄影师/开发名相同 → 不算变体
         function detectVariantGroups(folderGroups) {
             // 梯度折扣：第1套100% → 第2套90% → 第3套80% → 第4套70% → 第5套60% → 第6套起50%
             const VARIANT_DISCOUNTS = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5];
