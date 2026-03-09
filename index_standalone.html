@@ -3464,8 +3464,8 @@
                     ],
                     temperature: 0.1,
                     max_tokens: 4096,
-                    // 仅qwen3.5系列有思考模式，需关闭；qwen-vl-*无此参数
-                    ...(selectedModel.startsWith('qwen3') && { enable_thinking: false })
+                    // qwen3.5系列非流式调用必须关闭思考模式，否则返回400
+                    ...(selectedModel.startsWith('qwen3') && { extra_body: { enable_thinking: false } })
                 };
 
                 // 判断运行模式：file:// 协议为 standalone，否则通过后端代理
@@ -3500,6 +3500,8 @@
                         errorMsg = '❌ API Key无效或账户欠费，请检查API Key或充值';
                     } else if (errorMsg.includes('Throttling') || errorMsg.includes('rate') || errorMsg.includes('too many')) {
                         errorMsg = '❌ 请求过于频繁，请稍后再试（建议等待1分钟）';
+                    } else if (errorMsg.includes('enable_thinking')) {
+                        errorMsg = '❌ 模型参数错误，请刷新页面重试';
                     } else if (errorMsg.includes('InvalidParameter') || errorMsg.includes('image')) {
                         errorMsg = '❌ 图片格式或大小不符合要求，请尝试减少图片数量';
                     }
@@ -3528,7 +3530,8 @@
                     if (jsonMatch) {
                         result = JSON.parse(jsonMatch[0]);
                     } else {
-                        throw new Error('无法解析AI返回的评分结果');
+                        console.error('AI返回内容无法解析为JSON:', aiResponse);
+                        throw new Error(`无法解析AI返回的评分结果，AI原始回复：${aiResponse.substring(0, 200)}`);
                     }
                 }
 
