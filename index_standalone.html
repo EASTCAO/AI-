@@ -2065,14 +2065,14 @@
                         • <strong>主要依据</strong>：图片数量（有效图片数，排除备选和重复）<br>
                         • <strong>辅助参考</strong>：产品难度仅作参考，不直接加分<br>
                         • <strong>折叠规则</strong>：同角度微调3-5张折算为1张；场景图（有背景/道具，非纯白底）1张≈3张白底图<br>
-                        • <strong>批量折扣</strong>：颜色变体5-8折，系列产品3-8折<br>
+                        • <strong>批量折扣</strong>：同类产品变体按梯度折扣（第1套100%→9折→8折→7折→6折→5折）<br>
                         • <strong>AI合成图</strong>：文件名格式为"编号-摄影A图-开发已确认"或"开发已确认1/（2）/（3）"等，每张+0.1分
                     </div>
                     <div>
                         <strong>💡 打分要点：</strong><br>
                         1. <strong>图片折算</strong>：同角度3-6张=1张；场景图（有背景/道具，非纯白底）1张=3张白底图<br>
                         2. <strong>难度因素</strong>：大件、需造型、发光产品、特殊材质等仅作辅助参考<br>
-                        3. <strong>批量折扣</strong>：颜色变体5-8折；批量变体3-8折（根据难度调整）<br>
+                        3. <strong>批量折扣</strong>：同类变体梯度折扣（第1套100%→9折→8折→7折→6折→5折）<br>
                         4. <strong>分值灵活</strong>：可以是任意合理小数（如0.35、0.55、0.85、1.15等）
                     </div>
                 </div>
@@ -2347,9 +2347,9 @@
 - 注：耗时预估和产品难度作为辅助参考
 
 ### 7. 批量/变体折扣
-- **同类大量SKU**：一般5–6折
-- **变体多**：一般3–8折
-- **颜色变体**：一般5–8折，需考虑"挑选颜色拍/正常拍摄"策略
+- **判断依据**：产品名称相同 = 变体；开发/摄影师名相同不代表是变体；需结合文件名和图片内容综合判断
+- **梯度折扣**：第1套100% → 第2套9折 → 第3套8折 → 第4套7折 → 第5套6折 → 第6套起5折
+- **颜色变体**：同款不同颜色，按上述梯度折扣执行
 - **质量原则**：同样用时质量好少打折，质量低多打折
 
 ### 8. 合规风险
@@ -2383,7 +2383,7 @@
 3. 在边界情况下可作为微调依据（±0.05到±0.1）
 
 **第5步：应用折扣**
-1. 批量/变体折扣（3–8折）
+1. 批量/变体折扣（梯度：第1套100%→第2套9折→第3套8折→第4套7折→第5套6折→第6套起5折）
 2. 合规风险调整
 
 **第6步：计算最终积分**
@@ -3306,61 +3306,87 @@
             }
         }
 
-        // 从文件夹名提取产品名（去掉括号信息和变体词，用于变体分组）
+        // 从文件夹名提取产品名（用于变体分组，只看括号后的产品描述部分）
         function extractProductName(folderName) {
             let name = folderName;
-            // 去掉括号及括号内内容（如"（C-曹东-01.04）"）
+
+            // 优先取最后一个括号之后的内容作为产品名
+            // 格式如：J3-余梦芊-CLO2775（C-曹东-01.04）无动力风帽
+            const afterBracket = name.match(/[）)]\s*(.+)$/);
+            if (afterBracket && afterBracket[1].trim().length >= 2) {
+                // 括号后有产品名
+                let productName = afterBracket[1].trim();
+                // 去掉末尾颜色/尺寸变体词（仅用于归组，不影响显示）
+                productName = productName
+                    .replace(/[（(][^）)]*[）)]/g, '')
+                    .replace(/(红|蓝|黑|白|绿|黄|紫|粉|橙|灰|金|银|棕|青)(色)?$/u, '')
+                    .replace(/([A-Z]款|大号|中号|小号|加大|加厚|套装|\d+件套)$/u, '')
+                    .trim();
+                return productName || folderName;
+            }
+
+            // 无括号格式：去掉括号内容后按分隔符分段
             name = name.replace(/[（(][^）)]*[）)]/g, '');
-            // 去掉开头的编号和摄影师信息（如"J3-余梦芊-CLO2775-"前缀部分）
-            // 格式：字母数字-人名-SKU-产品名 → 取最后一段作为产品名
             const parts = name.replace(/_/g, '-').split('-');
-            // 过滤掉纯编号段（如J3、J15）和SKU段（大写字母+数字）
+            // 过滤掉：编号段（J3）、SKU段（大写字母+数字）、摄影师名（2字中文或更少）、日期段
             const productParts = parts.filter(p => {
                 const cleaned = p.trim();
                 if (!cleaned) return false;
-                // 排除：编号段（J3、J15等）
-                if (/^[A-Za-z]\d+$/.test(cleaned)) return false;
-                // 排除：SKU编号（3个以上大写字母+数字组合）
-                if (/^[A-Z]{2,}\d+/.test(cleaned)) return false;
-                // 排除：纯数字日期段（01.04、1.4等）
-                if (/^\d+\.\d+$/.test(cleaned)) return false;
+                if (/^[A-Za-z]\d+$/.test(cleaned)) return false;          // J3、J15
+                if (/^[A-Z]{2,}\d+/.test(cleaned)) return false;           // CLO2775、DAG0494
+                if (/^\d+\.\d+$/.test(cleaned)) return false;              // 01.04、1.4
                 return true;
             });
-            // 取最后一个有意义的段作为产品名
-            let productName = productParts.length > 0 ? productParts[productParts.length - 1] : name;
-            // 去掉末尾的颜色/尺寸变体词（红色、蓝色、A款、大号等）
+            let productName = productParts.length > 0 ? productParts[productParts.length - 1] : name.trim();
             productName = productName
-                .replace(/[（(][^）)]*[）)]/g, '')
                 .replace(/(红|蓝|黑|白|绿|黄|紫|粉|橙|灰|金|银|棕|青)(色)?$/u, '')
                 .replace(/([A-Z]款|大号|中号|小号|加大|加厚|套装|\d+件套)$/u, '')
                 .trim();
             return productName || folderName;
         }
 
-        // 自动检测变体组：返回 Map<folderPath, { groupKey, position }>
-        // position: 0=第一套(100%), 1=第二套(70%), 2=第三套(60%), 3+=其余(50%)
+        // 提取SKU前缀（字母部分，用于辅助判断变体）
+        function extractSkuPrefix(folderName) {
+            const normalized = folderName.replace(/_/g, '-');
+            // 匹配 SKU 编号格式：2个以上大写字母 + 数字
+            const skuMatch = normalized.match(/([A-Z]{2,})(\d+)/);
+            return skuMatch ? skuMatch[1] : ''; // 只返回字母前缀，如 CLO、DAG、HUI
+        }
+
+        // 自动检测变体组：返回 Map<folderPath, { groupKey, position, discountRate, isVariant }>
+        // 判断依据：产品名相同（括号后的描述一致）+ SKU字母前缀相同作为辅助
+        // 注意：开发/摄影师名相同不代表是变体
         function detectVariantGroups(folderGroups) {
-            const VARIANT_DISCOUNTS = [1.0, 0.7, 0.6, 0.5]; // 第1/2/3/4+套折扣率
+            // 梯度折扣：第1套100% → 第2套90% → 第3套80% → 第4套70% → 第5套60% → 第6套起50%
+            const VARIANT_DISCOUNTS = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5];
             const groups = {}; // groupKey → [folderPath, ...]
             const result = new Map();
 
             for (const folderPath in folderGroups) {
                 const group = folderGroups[folderPath];
                 const productName = extractProductName(group.name);
-                if (!groups[productName]) groups[productName] = [];
-                groups[productName].push(folderPath);
+                const skuPrefix = extractSkuPrefix(group.name);
+
+                // 分组键：产品名（必须相同）+ SKU字母前缀（相同时加强确认，不同时仍以产品名为准）
+                // 产品名过短（≤2字）或等于原文件名（提取失败）时不做变体归组
+                const isValidProductName = productName !== group.name && productName.length > 2;
+                const groupKey = isValidProductName ? productName : `__unique__${folderPath}`;
+
+                if (!groups[groupKey]) groups[groupKey] = [];
+                groups[groupKey].push(folderPath);
             }
 
-            for (const productName in groups) {
-                const paths = groups[productName];
+            for (const groupKey in groups) {
+                const paths = groups[groupKey];
+                const isVariant = paths.length > 1 && !groupKey.startsWith('__unique__');
                 paths.forEach((folderPath, idx) => {
                     const position = Math.min(idx, VARIANT_DISCOUNTS.length - 1);
                     result.set(folderPath, {
-                        groupKey: productName,
+                        groupKey: groupKey,
                         groupTotal: paths.length,
                         position: idx,
-                        discountRate: VARIANT_DISCOUNTS[position],
-                        isVariant: paths.length > 1
+                        discountRate: isVariant ? VARIANT_DISCOUNTS[position] : 1.0,
+                        isVariant: isVariant
                     });
                 });
             }
@@ -3391,7 +3417,7 @@
 
             // 提示检测到的变体组
             if (variantGroupCount > 0) {
-                showToast(`🔍 自动检测到 ${variantGroupCount} 组同类产品，将按梯度折扣计分（第1套100%→第2套70%→第3套60%→第4套起50%）`, 'info');
+                showToast(`🔍 自动检测到 ${variantGroupCount} 组同类产品，将按梯度折扣计分（第1套100%→90%→80%→70%→60%→第6套起50%）`, 'info');
                 await new Promise(resolve => setTimeout(resolve, 1200));
             }
 
@@ -3839,7 +3865,7 @@
                     // 显示折扣信息
                     let scoreDisplay = '';
                     if (item.isVariant && item.discountRate < 1.0) {
-                        const posLabel = ['第1套', '第2套', '第3套', '第4套'][Math.min((item.variantPosition || 1) - 1, 3)];
+                        const posLabel = ['第1套', '第2套', '第3套', '第4套', '第5套', '第6套'][Math.min((item.variantPosition || 1) - 1, 5)];
                         scoreDisplay = `
                             <div style="text-align: right;">
                                 <div style="font-size: 24px; font-weight: 800; color: var(--success); text-shadow: 0 2px 4px rgba(16, 185, 129, 0.15);">
