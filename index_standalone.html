@@ -3307,37 +3307,24 @@
         }
 
         // 从文件夹名提取变体分组键
-        // 规则1：括号后有产品名（≥3字）→ 用产品名分组（最可靠）
+        // 唯一规则：括号后有产品名（≥3字）→ 用产品名分组
         //   例：J3-余梦芊-CLO2775（C-曹东-01.04）无动力风帽 → '无动力风帽'
-        // 规则2：无括号但有SKU字母前缀（≥3字母）→ 用前缀分组（相近SKU如HAP1608/HAP1610/HAP1613）
-        //   例：HAP1613 → 'SKU:HAP'，HAP1610 → 'SKU:HAP'
-        // 规则3：其他情况 → 返回null，不参与归组
+        //   例：HAP1613（无括号）→ null，不参与归组
+        // SKU相似、摄影师相同均不单独触发变体归组
         function extractGroupKey(folderName) {
-            // 规则1：括号后产品名
             const afterBracket = folderName.match(/[）)]\s*(.+)$/);
-            if (afterBracket) {
-                let productName = afterBracket[1].trim();
-                if (productName.length >= 3) {
-                    productName = productName
-                        .replace(/[（(][^）)]*[）)]/g, '')
-                        .replace(/(红|蓝|黑|白|绿|黄|紫|粉|橙|灰|金|银|棕|青)(色)?$/u, '')
-                        .replace(/([A-Z]款|大号|中号|小号|加大|加厚)$/u, '')
-                        .trim();
-                    if (productName.length >= 3) return productName;
-                }
-            }
+            if (!afterBracket) return null;
 
-            // 规则2：无括号时，提取SKU字母前缀（≥3个大写字母）
-            const skuMatch = folderName.match(/([A-Z]{3,})\d+/);
-            if (skuMatch) return `SKU:${skuMatch[1]}`;
+            let productName = afterBracket[1].trim();
+            if (productName.length < 3) return null;
 
-            return null; // 无法归组
-        }
+            productName = productName
+                .replace(/[（(][^）)]*[）)]/g, '')
+                .replace(/(红|蓝|黑|白|绿|黄|紫|粉|橙|灰|金|银|棕|青)(色)?$/u, '')
+                .replace(/([A-Z]款|大号|中号|小号|加大|加厚)$/u, '')
+                .trim();
 
-        // 提取SKU前缀（字母部分，用于辅助判断变体）
-        function extractSkuPrefix(folderName) {
-            const skuMatch = folderName.replace(/_/g, '-').match(/([A-Z]{2,})(\d+)/);
-            return skuMatch ? skuMatch[1] : '';
+            return productName.length >= 3 ? productName : null;
         }
 
         // 自动检测变体组：返回 Map<folderPath, { groupKey, position, discountRate, isVariant }>
