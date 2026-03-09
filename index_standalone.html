@@ -3319,39 +3319,6 @@
             let isVariant = false;
             let discountRate = 1.0;
 
-            if (folderPaths.length > 1) {
-                // 检查是否来自同一摄影师
-                const photographers = [...new Set(Object.values(folderGroups).map(g => g.photographer))];
-
-                if (photographers.length === 1) {
-                    // 询问用户是否是批量变体
-                    const variantConfirm = confirm(
-                        `检测到 ${folderPaths.length} 个文件夹来自同一摄影师（${photographers[0]}）。\n\n这些是同一产品的批量变体吗？\n\n点击"确定"表示是批量变体（将应用折扣）\n点击"取消"表示是不同产品（不应用折扣）`
-                    );
-
-                    if (variantConfirm) {
-                        isVariant = true;
-                        // 让用户选择折扣率
-                        const discountInput = prompt(
-                            `请输入批量折扣率（0.3-1.0）：\n\n推荐折扣率：\n• 相同产品不同颜色：0.7（7折）\n• 相同系列产品：0.6（6折）\n• 大批量SKU：0.5（5折）\n• 高度相似产品：0.4（4折）\n• 完全通用图片：0.3（3折）`,
-                            '0.7'
-                        );
-
-                        if (discountInput !== null) {
-                            const rate = parseFloat(discountInput);
-                            if (rate >= 0.3 && rate <= 1.0) {
-                                discountRate = rate;
-                            } else {
-                                showToast('折扣率无效，使用默认7折', 'warning');
-                                discountRate = 0.7;
-                            }
-                        } else {
-                            isVariant = false; // 用户取消了
-                        }
-                    }
-                }
-            }
-
             btn.disabled = true;
             btn.innerHTML = '<div class="spinner"></div><span>批量分析中...</span>';
             loading.classList.add('active');
