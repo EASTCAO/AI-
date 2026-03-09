@@ -3809,6 +3809,17 @@
             const totalScore = results.reduce((sum, r) => sum + r.finalScore, 0);
             const photographerCount = Object.keys(photographerStats).length;
 
+            // 按组别（J组/K组等）统计套数和分数
+            const groupStats = {};
+            results.forEach(item => {
+                const gMatch = (item.folderName || '').match(/^([A-Za-z]+)\d/);
+                const g = gMatch ? gMatch[1].toUpperCase() + '组' : '其他';
+                if (!groupStats[g]) groupStats[g] = { count: 0, score: 0 };
+                groupStats[g].count++;
+                groupStats[g].score += item.finalScore;
+            });
+            const sortedGroupEntries = Object.entries(groupStats).sort(([a], [b]) => a.localeCompare(b));
+
             // 检测是否有自动变体折扣
             const hasDiscount = results.some(r => r.isVariant && r.discountRate < 1.0);
             const variantGroupKeys = new Set(results.filter(r => r.isVariant).map(r => r.folderName ? extractGroupKey(r.folderName) : ''));
@@ -3823,14 +3834,23 @@
             batchSummary.style.display = 'block';
 
             // 构建批量汇总HTML
+            // 生成组别明细行
+            const groupLines = sortedGroupEntries.map(([g, s]) =>
+                `<span style="margin-right:16px;"><strong>${g}</strong> ${s.count} 套 / ${s.score.toFixed(2)} 分</span>`
+            ).join('');
+
             let summaryHtml = `
                 <div style="background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border: 2px solid #7dd3fc; border-radius: var(--radius); padding: 20px 24px; margin-bottom: 16px; box-shadow: var(--shadow-sm);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                         <h4 style="font-size: 16px; font-weight: 700; color: #0c4a6e; margin: 0;">📊 批量评分汇总${hasDiscount ? `（自动识别 ${variantGroupCountDisplay} 组变体，梯度折扣）` : ''}</h4>
                         <div style="font-size: 32px; font-weight: 800; color: var(--primary); text-shadow: 0 2px 4px rgba(91, 127, 255, 0.15);">${totalScore.toFixed(2)} 分</div>
                     </div>
-                    <div style="font-size: 13px; color: #075985;">
-                        <strong>${photographerCount}</strong> 位摄影师，共 <strong>${results.length}</strong> 个任务
+                    ${sortedGroupEntries.length > 1 ? `
+                    <div style="font-size: 13px; color: #0369a1; margin-bottom: 8px; display:flex; flex-wrap:wrap; gap:4px;">
+                        ${groupLines}
+                    </div>` : ''}
+                    <div style="font-size: 13px; color: #075985; border-top: 1px solid #bae6fd; padding-top: 8px;">
+                        <strong>${photographerCount}</strong> 位摄影师，共 <strong>${results.length}</strong> 套任务，合计 <strong>${totalScore.toFixed(2)}</strong> 分
                     </div>
                 </div>
             `;
