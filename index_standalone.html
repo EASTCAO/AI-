@@ -3420,7 +3420,7 @@
                             let finalScore = baseScore;
                             if (variantInfo.isVariant && variantInfo.discountRate < 1.0) {
                                 finalScore = baseScore * variantInfo.discountRate;
-                                finalScore = Math.round(finalScore * 20) / 20; // 四舍五入到0.05
+                                finalScore = Math.floor(finalScore * 20) / 20; // 向下取整到0.05，确保折扣后不高于原价
                             }
 
                             results.push({
