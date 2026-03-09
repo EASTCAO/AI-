@@ -3432,8 +3432,8 @@
                     ],
                     temperature: 0.1,
                     max_tokens: 4096,
-                    // qwen3.5系列非流式调用必须关闭思考模式，否则返回400
-                    ...(selectedModel.startsWith('qwen3') && { extra_body: { enable_thinking: false } })
+                    // qwen3系列直接在顶层传 enable_thinking，关闭思考模式
+                    ...(selectedModel.startsWith('qwen3') && { enable_thinking: false })
                 };
 
                 // 判断运行模式：file:// 协议为 standalone，否则通过后端代理
@@ -3444,14 +3444,26 @@
                 const apiHeaders = { 'Content-Type': 'application/json' };
                 if (isStandalone) apiHeaders['Authorization'] = `Bearer ${geminiApiKey}`;
 
-                const response = await fetch(
-                    apiEndpoint,
-                    {
+                // 60秒超时，防止卡死
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+                let response;
+                try {
+                    response = await fetch(apiEndpoint, {
                         method: 'POST',
                         headers: apiHeaders,
-                        body: JSON.stringify(requestBody)
+                        body: JSON.stringify(requestBody),
+                        signal: controller.signal
+                    });
+                } catch (fetchErr) {
+                    if (fetchErr.name === 'AbortError') {
+                        throw new Error('❌ 请求超时（60秒），请检查网络或减少图片数量后重试');
                     }
-                );
+                    throw fetchErr;
+                } finally {
+                    clearTimeout(timeoutId);
+                }
 
                 if (!response.ok) {
                     const errorData = await response.json();
