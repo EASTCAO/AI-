@@ -2962,8 +2962,8 @@
         // 处理单张图片（压缩超大图片）
         async function processImage(file) {
             return new Promise((resolve, reject) => {
-                const maxSize = 5 * 1024 * 1024; // 5MB（降低阈值，加快批量处理）
-                const maxDimension = 1920; // 最大尺寸限制为1920px
+                const maxSize = 1.5 * 1024 * 1024; // 1.5MB，减少传输量
+                const maxDimension = 1280; // 最大尺寸1280px，AI识别已足够
 
                 const reader = new FileReader();
                 reader.onload = (e) => {
@@ -3002,11 +3002,11 @@
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
                         // 根据文件大小动态调整质量
-                        let quality = 0.85;
+                        let quality = 0.75;
                         if (file.size > 10 * 1024 * 1024) {
-                            quality = 0.7; // 超大文件用更低质量
+                            quality = 0.6; // 超大文件用更低质量
                         } else if (file.size > maxSize) {
-                            quality = 0.8;
+                            quality = 0.7;
                         }
 
                         // 压缩
