@@ -3496,14 +3496,14 @@
                 const maxImages = Math.min(filesData.length, 20);
                 console.log(`正在分析 ${maxImages} 张图片（共${filesData.length}张）${folderName ? ` - ${folderName}` : ''}`);
 
-                // 构建消息内容 - 使用OpenAI兼容格式
-                const fileNameList = filesData.slice(0, maxImages)
+                // 文件名列表包含所有文件（不限于前20张），确保AI图等特殊文件不被遗漏
+                const fileNameList = filesData
                     .map((f, i) => `${i + 1}. ${f.fileName || '未知'}`)
                     .join('\n');
                 const messageContent = [
                     {
                         type: 'text',
-                        text: `${SCORING_PROMPT}\n\n这是一套产品拍摄图片，共${totalCount}张。${totalCount > maxImages ? `（由于数量较多，我只展示了前${maxImages}张作为样本）` : ''}\n\n文件名列表（按顺序对应下方图片）：\n${fileNameList}\n\n请分析这些图片并给出评分。`
+                        text: `${SCORING_PROMPT}\n\n这是一套产品拍摄图片，共${totalCount}张。${totalCount > maxImages ? `（图片较多，下方仅展示前${maxImages}张图片内容，但以下文件名列表包含全部${totalCount}张，请以文件名列表为准统计AI图等信息）` : ''}\n\n文件名列表（全部${totalCount}张）：\n${fileNameList}\n\n请分析这些图片并给出评分。`
                     }
                 ];
 
