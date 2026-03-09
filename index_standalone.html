@@ -3306,25 +3306,32 @@
             }
         }
 
-        // 从文件夹名提取产品名，用于变体分组
-        // 规则：只取括号（）之后的产品描述文字，没有括号则返回null不参与归组
-        // 例：J3-余梦芊-CLO2775（C-曹东-01.04）无动力风帽 → '无动力风帽'
-        // 例：GFA2920孔瑜 → null（无括号，不归组）
-        function extractProductName(folderName) {
+        // 从文件夹名提取变体分组键
+        // 规则1：括号后有产品名（≥3字）→ 用产品名分组（最可靠）
+        //   例：J3-余梦芊-CLO2775（C-曹东-01.04）无动力风帽 → '无动力风帽'
+        // 规则2：无括号但有SKU字母前缀（≥3字母）→ 用前缀分组（相近SKU如HAP1608/HAP1610/HAP1613）
+        //   例：HAP1613 → 'SKU:HAP'，HAP1610 → 'SKU:HAP'
+        // 规则3：其他情况 → 返回null，不参与归组
+        function extractGroupKey(folderName) {
+            // 规则1：括号后产品名
             const afterBracket = folderName.match(/[）)]\s*(.+)$/);
-            if (!afterBracket) return null; // 无括号 → 不参与变体归组
+            if (afterBracket) {
+                let productName = afterBracket[1].trim();
+                if (productName.length >= 3) {
+                    productName = productName
+                        .replace(/[（(][^）)]*[）)]/g, '')
+                        .replace(/(红|蓝|黑|白|绿|黄|紫|粉|橙|灰|金|银|棕|青)(色)?$/u, '')
+                        .replace(/([A-Z]款|大号|中号|小号|加大|加厚)$/u, '')
+                        .trim();
+                    if (productName.length >= 3) return productName;
+                }
+            }
 
-            let productName = afterBracket[1].trim();
-            if (productName.length < 3) return null; // 太短（如人名）→ 不归组
+            // 规则2：无括号时，提取SKU字母前缀（≥3个大写字母）
+            const skuMatch = folderName.match(/([A-Z]{3,})\d+/);
+            if (skuMatch) return `SKU:${skuMatch[1]}`;
 
-            // 去掉末尾颜色/款式词（同款不同颜色仍算同一产品）
-            productName = productName
-                .replace(/[（(][^）)]*[）)]/g, '')
-                .replace(/(红|蓝|黑|白|绿|黄|紫|粉|橙|灰|金|银|棕|青)(色)?$/u, '')
-                .replace(/([A-Z]款|大号|中号|小号|加大|加厚)$/u, '')
-                .trim();
-
-            return productName.length >= 3 ? productName : null;
+            return null; // 无法归组
         }
 
         // 提取SKU前缀（字母部分，用于辅助判断变体）
@@ -3334,8 +3341,10 @@
         }
 
         // 自动检测变体组：返回 Map<folderPath, { groupKey, position, discountRate, isVariant }>
-        // 判断依据：括号后的产品名完全相同 → 变体
-        // 无括号、产品名过短、开发/摄影师名相同 → 不算变体
+        // 判断依据：
+        //   · 括号后产品名相同 → 变体（最强信号）
+        //   · 无括号但SKU字母前缀相同（≥3字母，如HAP/CLO/DAG）→ 变体
+        //   · 开发/摄影师名相同 → 不算变体
         function detectVariantGroups(folderGroups) {
             // 梯度折扣：第1套100% → 第2套90% → 第3套80% → 第4套70% → 第5套60% → 第6套起50%
             const VARIANT_DISCOUNTS = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5];
@@ -3344,11 +3353,11 @@
 
             for (const folderPath in folderGroups) {
                 const group = folderGroups[folderPath];
-                const productName = extractProductName(group.name);
-                // 无有效产品名 → 独立唯一键，绝不归组
-                const groupKey = productName ? productName : `__unique__${folderPath}`;
-                if (!groups[groupKey]) groups[groupKey] = [];
-                groups[groupKey].push(folderPath);
+                const groupKey = extractGroupKey(group.name);
+                // 无有效分组键 → 独立唯一键，绝不归组
+                const key = groupKey ? groupKey : `__unique__${folderPath}`;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(folderPath);
             }
 
             for (const groupKey in groups) {
@@ -3807,7 +3816,7 @@
 
             // 检测是否有自动变体折扣
             const hasDiscount = results.some(r => r.isVariant && r.discountRate < 1.0);
-            const variantGroupKeys = new Set(results.filter(r => r.isVariant).map(r => r.folderName ? extractProductName(r.folderName) : ''));
+            const variantGroupKeys = new Set(results.filter(r => r.isVariant).map(r => r.folderName ? extractGroupKey(r.folderName) : ''));
             const variantGroupCountDisplay = variantGroupKeys.size;
 
             // 隐藏标题卡片和AI分析框（批量评分时不显示）
