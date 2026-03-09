@@ -3901,6 +3901,9 @@
                 results.forEach(item => {
                     const r = item.result;
                     const totalImages = r.dimension1_quantity?.totalImages || r.totalImages || 0;
+                    // 从文件夹名提取组别（J3→J组，K15→K组，无前缀→其他）
+                    const groupMatch = (item.folderName || '').match(/^([A-Za-z]+)\d/);
+                    const groupTag = groupMatch ? groupMatch[1].toUpperCase() + '组' : '其他';
 
                     const record = {
                         id: Date.now() + savedCount,
@@ -3908,6 +3911,8 @@
                         time: new Date().toLocaleTimeString('zh-CN'),
                         photographer: item.photographer,
                         taskName: item.taskName,
+                        folderName: item.folderName || '',
+                        groupTag,
                         imageCount: totalImages,
                         singleScore: item.baseScore,
                         finalScore: item.finalScore,
@@ -3946,6 +3951,8 @@
 
             const baseSuggestedScore = currentResult.finalScore?.suggestedScore || currentResult.suggestedScore || 0;
             const totalImages = currentResult.dimension1_quantity?.totalImages || currentResult.totalImages || 0;
+            const groupMatch = taskName.match(/^([A-Za-z]+)\d/);
+            const groupTag = groupMatch ? groupMatch[1].toUpperCase() + '组' : '其他';
 
             const record = {
                 id: Date.now(),
@@ -3953,6 +3960,7 @@
                 time: new Date().toLocaleTimeString('zh-CN'),
                 photographer,
                 taskName,
+                groupTag,
                 imageCount: totalImages,
                 singleScore: baseSuggestedScore,
                 finalScore: currentResult.finalScore,
@@ -4118,19 +4126,44 @@
                 return;
             }
 
-            // 构建CSV内容
             const csvRows = [];
 
-            // 只保留三列：摄影师、SKU、评分
-            csvRows.push(['摄影师', 'SKU', '评分']);
+            // 标题行
+            csvRows.push(['日期', '摄影师', 'SKU', '评分']);
 
+            // 按摄影师分组排列
+            const byPhotographer = {};
             data.forEach(r => {
-                csvRows.push([
-                    r.photographer,
-                    r.taskName,
-                    r.finalScore.toFixed(2)
-                ]);
+                const key = r.photographer || '未知';
+                if (!byPhotographer[key]) byPhotographer[key] = [];
+                byPhotographer[key].push(r);
             });
+
+            Object.entries(byPhotographer).forEach(([photographer, rows]) => {
+                rows.forEach(r => {
+                    csvRows.push([r.date, photographer, r.taskName, r.finalScore.toFixed(2)]);
+                });
+            });
+
+            // 空行
+            csvRows.push(['', '', '', '']);
+
+            // 按组别（J组/K组等）汇总
+            const byGroup = {};
+            data.forEach(r => {
+                const g = r.groupTag || '其他';
+                if (!byGroup[g]) byGroup[g] = 0;
+                byGroup[g] += r.finalScore;
+            });
+
+            const sortedGroups = Object.entries(byGroup).sort(([a], [b]) => a.localeCompare(b));
+            sortedGroups.forEach(([group, total]) => {
+                csvRows.push([group, '', `共 ${byGroup[group] > 0 ? byGroup[group].toFixed(2) : '0.00'} 分`, '']);
+            });
+
+            // 总计行
+            const grandTotal = data.reduce((s, r) => s + r.finalScore, 0);
+            csvRows.push(['总计', '', `共 ${grandTotal.toFixed(2)} 分`, '']);
 
             const csv = '\uFEFF' + csvRows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
             const blob = new Blob([csv], { type: 'text/csv' });
