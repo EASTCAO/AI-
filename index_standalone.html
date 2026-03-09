@@ -1967,7 +1967,6 @@
                     <select id="modelSelectModal" onchange="saveModelFromModal()">
                         <option value="qwen3.5-plus">Qwen3.5 Plus (推荐)</option>
                         <option value="qwen3-vl-plus">Qwen3 VL Plus</option>
-                        <option value="qwen-vl-plus">Qwen VL Plus (速度快)</option>
                         <option value="qwen-vl-max">Qwen VL Max (高精度)</option>
                     </select>
                     <p class="setting-hint">
@@ -2494,7 +2493,7 @@
 
         // 加载保存的模型
         function loadModel() {
-            const VALID_MODELS = ['qwen3-vl-plus', 'qwen3.5-plus', 'qwen-vl-plus', 'qwen-vl-max'];
+            const VALID_MODELS = ['qwen3-vl-plus', 'qwen3.5-plus', 'qwen-vl-max'];
             let saved = localStorage.getItem("qwen_model");
             // 旧的无效模型 ID 自动重置
             if (saved && !VALID_MODELS.includes(saved)) {
